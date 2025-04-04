@@ -33,6 +33,14 @@ export class AuthRepository {
     return await this.prisma.user.findMany();
   }
 
+  async getUserById(id: string): Promise<User | null> {
+    return await this.prisma.user.findUnique({
+      where: {
+        id,
+      },
+    });
+  }
+
   async getUsersCount(): Promise<number> {
     return await this.prisma.user.count();
   }

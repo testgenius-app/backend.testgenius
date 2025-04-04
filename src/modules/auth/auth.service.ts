@@ -14,6 +14,9 @@ import { RefreshDto } from './dto/refresh.dto';
 import { RestoreDto } from './dto/restore.dto';
 import { ResultTokenDto } from './dto/result-token.dto';
 import { UtilsService } from 'src/core/utils/utils.service';
+import { IUser } from 'src/core/types/iuser.type';
+import { User } from 'src/common/decorators/user.decorator';
+import { UserDto } from './dto/user.dto';
 
 @Injectable()
 export class AuthService {
@@ -124,6 +127,21 @@ export class AuthService {
       }
 
       return this.tokenService.generateTokens(user.id);
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
+  }
+
+  async whoami(@User() userData: IUser): Promise<UserDto> {
+    try {
+      const user = await this.authRepository.getUserById(userData.id);
+
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+
+      delete user.password;
+      return user;
     } catch (error) {
       throw new InternalServerErrorException(error.message);
     }
