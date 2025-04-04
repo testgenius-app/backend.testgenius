@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(uuid()) @map("user_id")
+  firstName      String   @map("first_name")
+  lastName       String?  @map("last_name")
+  email          String   @unique
+  password String
+  logo           String?
+  coins          Int
+  lastActiveDate DateTime @default(now()) @map("last_active_date")
+  role           Role     @default(USER) @map("user_role")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @map("updated_at")
+  isVerified     Boolean  @default(false) @map("is_verified")
+
+  @@map("User")
+}
+
+enum Role {
+  USER
+  ADMIN
+  INVESTOR
+}
+
+model VerificationCode {
+  id        String   @id @default(uuid()) @map("verification_code_id")
+  code      String   @map("code") @unique
+  token String @unique
+  firstName String   @map("first_name")
+  lastName  String?  @map("last_name")
+  email     String   @unique
+  password  String @map("hashed_password")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  @@map("verification_codes")
+}
+
+model Pack {
+  id              String   @id @default(uuid()) @map("pack_id")
+  name            String
+  coinsCount      Int      @default(1) @map("coinsCount")
+  discountPerCent Int?     @map("discount_per_cent")
+  bonusCount      Int?     @default(0)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @map("updated_at")
+  advantages      String[]
+  disadvantages   String[]
+  isDaily         Boolean  @default(false) @map("is_daily")
+  isFree          Boolean  @default(false) @map("is_free")
+
+  @@map("packs")
+}
