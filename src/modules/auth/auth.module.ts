@@ -6,7 +6,7 @@ import { VerificationService } from './verification.service';
 import { TokenService } from './token.service';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { PrismaService } from 'src/core/prisma/prisma.service';
+import { PrismaService } from 'src/common/prisma/prisma.service';
 import { UtilsService } from 'src/core/utils/utils.service';
 
 @Module({

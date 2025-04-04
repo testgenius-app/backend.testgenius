@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/core/prisma/prisma.service';
+import { PrismaService } from 'src/common/prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { User, VerificationCode } from '@prisma/client';
 
@@ -36,6 +36,4 @@ export class AuthRepository {
   async getUsersCount(): Promise<number> {
     return await this.prisma.user.count();
   }
-
-  
 }
