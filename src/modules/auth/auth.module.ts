@@ -9,6 +9,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { UtilsService } from 'src/core/utils/utils.service';
 import { GoogleModule } from './google/google.module';
+import { MailService } from 'src/core/mail/mail.service';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { GoogleModule } from './google/google.module';
     VerificationService,
     TokenService,
     UtilsService,
+    MailService,
   ],
 })
 export class AuthModule {}
