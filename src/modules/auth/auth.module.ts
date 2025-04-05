@@ -8,6 +8,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { UtilsService } from 'src/core/utils/utils.service';
+import { GoogleModule } from './google/google.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { UtilsService } from 'src/core/utils/utils.service';
       }),
       inject: [ConfigService],
     }),
+    GoogleModule,
   ],
   controllers: [AuthController],
   providers: [
