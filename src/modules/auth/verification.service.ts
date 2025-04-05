@@ -5,12 +5,14 @@ import { VerificationDto } from './dto/verification.dto';
 import { User, VerificationCode } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { UtilsService } from 'src/core/utils/utils.service';
+import { MailService } from 'src/core/mail/mail.service';
 
 @Injectable()
 export class VerificationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly utilsService: UtilsService,
+    private readonly mailService: MailService,
   ) {}
 
   async createVerificationCode(data: RegisterDto): Promise<VerificationCode> {
@@ -39,6 +41,17 @@ export class VerificationService {
     });
 
     if (existingCode && existingCode.expiresAt > new Date()) {
+      if (isRestore) {
+        await this.mailService.sendRestoreAccountOtp(
+          data.email,
+          existingCode.code,
+        );
+      } else {
+        await this.mailService.sendRegistrationOtp(
+          data.email,
+          existingCode.code,
+        );
+      }
       return existingCode;
     }
 
@@ -55,7 +68,8 @@ export class VerificationService {
     const password = isRestore
       ? ''
       : await this.utilsService.hashPassword(data.password);
-    return await this.prisma.verificationCode.create({
+
+    const verificationCode = await this.prisma.verificationCode.create({
       data: {
         code,
         token,
@@ -66,6 +80,18 @@ export class VerificationService {
         expiresAt: new Date(Date.now() + 1000 * 60 * 15),
       },
     });
+    if (isRestore) {
+      await this.mailService.sendRestoreAccountOtp(
+        data.email,
+        verificationCode.code,
+      );
+    } else {
+      await this.mailService.sendRegistrationOtp(
+        data.email,
+        verificationCode.code,
+      );
+    }
+    return verificationCode;
   }
 
   async verifyVerificationCode(

@@ -11,11 +11,16 @@ import { ApiTags } from '@nestjs/swagger';
 import { User } from 'src/common/decorators/user.decorator';
 import { UserProfileDto } from './dto/user-profile.dto';
 import { GoogleService } from './google.service';
-import { ITokens } from 'src/core/types/tokens.type';
+import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
+
 @ApiTags('OAuth2')
 @Controller({ path: '/auth/google' })
 export class GoogleController {
-  constructor(private readonly googleService: GoogleService) {}
+  constructor(
+    private readonly googleService: GoogleService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Get('')
   @UseGuards(GoogleOauthGuard)
@@ -23,8 +28,13 @@ export class GoogleController {
 
   @Get('callback')
   @UseGuards(GoogleOauthGuard)
-  async googleAuthCallback(@User() user: UserProfileDto): Promise<ITokens> {
-    console.log(user);
-    return this.googleService.auth(user);
+  async googleAuthCallback(@User() user: UserProfileDto, @Res() res: Response) {
+    return this.googleService
+      .auth(user)
+      .then((tokens) =>
+        res.redirect(
+          `${this.configService.get<string>('FRONTEND_URL')}/auth/callback/google?access_token=${tokens.accessToken}&refresh_token=${tokens.refreshToken}`,
+        ),
+      );
   }
 }
