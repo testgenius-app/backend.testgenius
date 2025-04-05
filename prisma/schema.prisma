@@ -20,8 +20,8 @@ model User {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @default(now()) @map("updated_at")
   isVerified     Boolean  @default(false) @map("is_verified")
-  provider Providers @default(EMAIL)
-
+  provider       Providers @default(EMAIL)
+  tests          Test[]
   @@map("User")
 }
 
@@ -40,11 +40,11 @@ enum Providers {
 model VerificationCode {
   id        String   @id @default(uuid()) @map("verification_code_id")
   code      String   @map("code") @unique
-  token String @unique
+  token     String   @unique
   firstName String   @map("first_name")
   lastName  String?  @map("last_name")
   email     String   @unique
-  password  String @map("hashed_password")
+  password  String   @map("hashed_password")
   createdAt DateTime @default(now()) @map("created_at")
   expiresAt DateTime @map("expires_at")
   @@map("verification_codes")
@@ -64,4 +64,86 @@ model Pack {
   isFree          Boolean  @default(false) @map("is_free")
 
   @@map("packs")
+}
+
+model Test {
+  id            String    @id @default(uuid()) @map("test_id")
+  title         String
+  subject       String
+  gradeLevel    String    @map("grade_level")
+  description   String
+  tags          String[]
+  sectionCount  Int       @map("section_count")
+  isPublic      Boolean   @default(false) @map("is_public")
+  sections      Section[]
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId       String    @map("owner_id")
+
+  @@map("tests")
+}
+
+model Section {
+  id            String    @id @default(uuid()) @map("section_id")
+  title         String
+  instruction   String
+  type          String
+
+  contextText   String?    @map("context_text")
+  contextImage  String?    @map("context_image")
+  contextAudio  String?    @map("context_audio")
+  contextVideo  String?    @map("context_video")
+
+  test          Test      @relation(fields: [testId], references: [id], onDelete: Cascade)
+  testId        String
+
+  tasks         Task[]
+
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("sections")
+}
+
+model Task {
+  id            String    @id @default(uuid()) @map("task_id")
+  title         String
+  type          String
+
+  section       Section   @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  sectionId     String    @map("section_id")
+
+  questions     Question[]
+
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("tasks")
+}
+
+model Question {
+  id                     String    @id @default(uuid()) @map("question_id")
+  questionText           String    @map("question_text")
+  options                String[]
+  answers                String[]
+  acceptableAnswers      String[]
+  answerKeywords         String[]
+  expectedResponseFormat String    @map("expected_response_format")
+  score                  Int?
+  explanation            String
+
+  imageUrl               String?   @map("image_url")
+  audioUrl               String?   @map("audio_url")
+  labelLocationX         Float?    @map("label_location_x")
+  labelLocationY         Float?    @map("label_location_y")
+
+  task                   Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId                 String    @map("task_id")
+
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  @@map("questions")
 }
