@@ -12,7 +12,7 @@ model User {
   firstName      String   @map("first_name")
   lastName       String?  @map("last_name")
   email          String   @unique
-  password String
+  password       String?
   logo           String?
   coins          Int
   lastActiveDate DateTime @default(now()) @map("last_active_date")
@@ -20,6 +20,7 @@ model User {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @default(now()) @map("updated_at")
   isVerified     Boolean  @default(false) @map("is_verified")
+  provider Providers @default(EMAIL)
 
   @@map("User")
 }
@@ -28,6 +29,12 @@ enum Role {
   USER
   ADMIN
   INVESTOR
+}
+
+enum Providers {
+  GOOGLE
+  EMAIL
+  FACEBOOK
 }
 
 model VerificationCode {
