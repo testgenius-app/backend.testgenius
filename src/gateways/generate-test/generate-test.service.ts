@@ -25,11 +25,14 @@ export class GenerateTestService implements OnModuleInit {
     //   title: "Ingliz tili bo'yicha test",
     //   topic: 'articles and to be',
     //   description: 'Ingliz tili boyicha advanced darajada test',
-    //   sectionTypes: ['fill_in_the_blank'],
+    //   sectionTypes: ['fill_in_the_blank', 'true_false', 'multiple_choice', 'short_answer', 'matching_the_headings'],
     //   questionsPerSection: 5,
     //   tags: ['ingliz-tili', 'advanced', 'assessment'],
-    //   sectionCount: 1,
+    //   sectionCount: 5,
     // });
+    // const fs = require('fs');
+    // const json = JSON.stringify(res, null, 2);
+    // fs.writeFileSync('test.json', json);
     // await this.testService.create(
     //   { id: 'c338da2a-3d45-4ac3-9450-22fc9688a564' },
     //   res,
@@ -44,13 +47,14 @@ export class GenerateTestService implements OnModuleInit {
         gradeLevel,
         title = `${subject.charAt(0).toUpperCase() + subject.slice(1)} Test for Grade ${gradeLevel}`,
         description = `A comprehensive ${subject} test for ${gradeLevel} level students.`,
-        sectionTypes = ['multiple_choice'],
-        questionsPerSection = 3,
+
+        questionsPerSection = 2,
         tags = [subject, `grade-${gradeLevel}`, 'assessment'],
         sectionCount = 1,
         topic = 'random',
       } = testParams;
 
+      const sectionTypes = ['multiple_choice', 'short_answer', 'matching_the_headings', 'reading_passage','fill_in_the_blank','true_false','matching'];
       // Build the instruction prompt
       const prompt = `
     You are an expert educational test creator with deep knowledge of ${subject} at the ${gradeLevel} level.
@@ -105,7 +109,7 @@ export class GenerateTestService implements OnModuleInit {
                   "question_id": "", // Generate a unique ID for each question
                   "questionText": "", // Clear, well-written question text
     
-                  "options": [], // For multiple choice only: include 4 or less options with one correct
+                  "options": [], // For multiple choice and true false only: include 4 or less options with one correct
     
                   "answers": [""], // The correct answer (for multiple choice, use the letter or full text)
                   "acceptableAnswers": [], // For short answer questions, list acceptable variations

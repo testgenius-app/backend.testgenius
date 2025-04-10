@@ -8,7 +8,6 @@ import {
 import { Server, Socket } from 'socket.io';
 import { GenerateTestService } from './generate-test.service';
 import { Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { GENERATE_TEST_EVENTS } from './events/generate-test.events';
 import { JwtTokenService } from './jwt-token.service';
 
@@ -16,7 +15,7 @@ import { JwtTokenService } from './jwt-token.service';
   namespace: 'generate-test',
   transports: ['websocket'],
   cors: {
-    origin: ['http://localhost:3000'],
+    origin: ['*'],
     credentials: true,
   },
 })
@@ -26,7 +25,6 @@ export class GenerateTestGateway
   constructor(
     private readonly generateTestService: GenerateTestService,
     private readonly logger: Logger,
-    private readonly configService: ConfigService,
     private readonly jwtTokenService: JwtTokenService,
   ) {}
   @WebSocketServer()
@@ -34,6 +32,8 @@ export class GenerateTestGateway
 
   async handleConnection(client: Socket) {
     const accessToken = client.handshake.auth.accessToken;
+    console.log('tried', accessToken);
+
     if (!accessToken) {
       client.disconnect();
       return;
@@ -45,7 +45,7 @@ export class GenerateTestGateway
       client.disconnect();
       return;
     }
-    this.logger.log('Client connected:', client.id);
+    this.logger.log('Client connected:', user);
   }
 
   async handleDisconnect(client: Socket) {
@@ -54,6 +54,12 @@ export class GenerateTestGateway
 
   @SubscribeMessage(GENERATE_TEST_EVENTS.GENERATE_TEST_BY_FORM)
   async handleTest(client: Socket, data: any) {
+    await this.validateUser(client);
+    const test = await this.generateTestService.generateTest(data);
+    client.emit(GENERATE_TEST_EVENTS.GENERATE_TEST_SUCCESS, test);
+  }
+
+  private async validateUser(client: Socket) {
     const token = client.handshake.auth.accessToken;
     const user = await this.jwtTokenService.verifyToken(token);
     if (!user) {
@@ -61,7 +67,6 @@ export class GenerateTestGateway
       client.disconnect();
       return;
     }
-    const test = await this.generateTestService.generateTest(data);
-    client.emit(GENERATE_TEST_EVENTS.GENERATE_TEST_SUCCESS, test);
+    return user;
   }
 }
