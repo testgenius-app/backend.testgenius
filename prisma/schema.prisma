@@ -82,6 +82,8 @@ model Test {
   owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId       String    @map("owner_id")
 
+  testTempCode  TestTempCode?
+
   @@map("tests")
 }
 
@@ -146,4 +148,15 @@ model Question {
   updatedAt              DateTime  @updatedAt @map("updated_at")
 
   @@map("questions")
+}
+model TestTempCode {
+  id         String    @id @default(uuid()) @map("test_temp_code_id")
+  code       Int       @unique
+  createdAt  DateTime  @default(now()) @map("created_at")
+  expiresAt  DateTime  @updatedAt @map("expires_at")
+
+  test       Test      @relation(fields: [testId], references: [id], onDelete: Cascade)
+  testId     String    @unique @map("test_id")
+
+  @@map("test_temp_codes")
 }
