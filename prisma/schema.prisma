@@ -81,6 +81,7 @@ model Test {
 
   owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId       String    @map("owner_id")
+  onlineTests    OnlineTest[]
 
   testTempCode  TestTempCode?
 
@@ -157,6 +158,22 @@ model TestTempCode {
 
   test       Test      @relation(fields: [testId], references: [id], onDelete: Cascade)
   testId     String    @unique @map("test_id")
-
+  onlineTest OnlineTest?
   @@map("test_temp_codes")
+}
+
+model OnlineTest {
+  id         String    @id @default(uuid()) @map("online_test_id")
+  testId     String    @unique @map("test_id")
+  test       Test      @relation(fields: [testId], references: [id], onDelete: Cascade)
+  tempCodeId String?   @unique @map("temp_code_id")
+  durationInMinutes Int @default(30) @map("duration_in_minutes")
+  startedAt DateTime? @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+  testTempCode TestTempCode? @relation(fields: [tempCodeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  participants Json? 
+  results Json? 
+  @@map("online_tests")
 }

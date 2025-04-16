@@ -31,9 +31,10 @@ export class GenerateTestGateway
   server: Server;
 
   async handleConnection(client: Socket) {
+    this.logger.log('Client connected to generate-test gateway');
     const accessToken = client.handshake.auth.accessToken;
-    console.log('tried', accessToken);
 
+    this.logger.log('Access token', client.handshake.auth);
     if (!accessToken) {
       client.disconnect();
       return;
@@ -45,11 +46,11 @@ export class GenerateTestGateway
       client.disconnect();
       return;
     }
-    this.logger.log('Client connected:', user);
+    this.logger.log('Client connected to generate-test gateway');
   }
 
   async handleDisconnect(client: Socket) {
-    this.logger.log('Client disconnected:', client.id);
+    this.logger.log('Client disconnected from generate-test gateway');
   }
 
   @SubscribeMessage(GENERATE_TEST_EVENTS.GENERATE_TEST_BY_FORM)

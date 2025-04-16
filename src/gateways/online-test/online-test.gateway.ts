@@ -13,16 +13,11 @@ import { JwtTokenService } from '../generate-test/jwt-token.service';
 import { ONLINE_TEST_EVENTS } from './events/online-test.events';
 import { TestTempCodeService } from 'src/modules/test-temp-code/test-temp-code.service';
 import { TestService } from 'src/modules/test/test.service';
-
-interface IOnlineTest {
-  test: any;
-  onlineUsers: Map<string, any>;
-  durationInMinutes: number;
-  code: number;
-  isFinished: boolean;
-  adminId: string;
-}
-
+import { User } from '@prisma/client';
+import {
+  IParticipant,
+  OnlineTestService,
+} from 'src/modules/online-test/online-test.service';
 @WebSocketGateway({
   namespace: 'online-test',
   transports: ['websocket'],
@@ -34,202 +29,167 @@ interface IOnlineTest {
 export class OnlineTestGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
-  private onlineTests = new Map<string, IOnlineTest>();
+  @WebSocketServer()
+  server: Server;
 
   constructor(
     private readonly logger: Logger,
     private readonly jwtTokenService: JwtTokenService,
     private readonly testTempCodeService: TestTempCodeService,
     private readonly testService: TestService,
+    private readonly onlineTestService: OnlineTestService,
   ) {}
 
-  @WebSocketServer()
-  server: Server;
-
   async handleConnection(client: Socket) {
-    const accessToken = client.handshake.auth.accessToken;
-    console.log('tried', accessToken);
-
-    if (!accessToken) {
-      client.disconnect();
-      return;
-    }
-
-    const user = await this.jwtTokenService.verifyToken(accessToken);
-
-    if (!user) {
-      client.disconnect();
-      return;
-    }
+    this.logger.log('Client connected online-test gateway');
   }
 
   async handleDisconnect(client: Socket) {
-    this.logger.log('Client disconnected:', client.id);
+    this.logger.log('Client disconnected from online-test gateway');
   }
+
   @SubscribeMessage(ONLINE_TEST_EVENTS.START_TEST)
   async startTest(
     client: Socket,
-    payload: { test: any; isTestCreated: boolean },
+    { test, isTestCreated }: { test: any; isTestCreated: boolean },
   ) {
-    console.log('start test', payload);
-    const { test, isTestCreated } = payload;
-    const user = await this.validateUser(client);
-    if (!user) {
-      return;
-    }
+    try {
+      const user = await this.validateUser(client);
+      if (!user) return;
 
-    if (isTestCreated) {
-      try {
-        const testTempCode = await this.testTempCodeService.createTestTempCode(
-          test.id,
-        );
-        const durationInMinutes = test.durationInMinutes;
-        this.onlineTests.set(test.id, {
-          test,
-          onlineUsers: new Map(),
-          durationInMinutes,
-          code: testTempCode.code,
-          isFinished: false,
-          adminId: user.id,
-        });
-
-        client.join(String(testTempCode.code));
-        return client.broadcast
-          .to(String(testTempCode.code))
-          .emit(ONLINE_TEST_EVENTS.START_TEST, {
-            test,
-            code: testTempCode.code,
-          });
-      } catch (error) {
-        this.logger.error(error);
-      }
-    } else {
-      const data = await this.testService.create(user, test);
+      const data = isTestCreated
+        ? test
+        : await this.testService.create(user, test);
       const tempCode = await this.testTempCodeService.createTestTempCode(
         data.id,
       );
-      const durationInMinutes = test.durationInMinutes;
-      this.onlineTests.set(data.id, {
-        test: data,
-        onlineUsers: new Map(),
-        durationInMinutes,
-        code: tempCode.code,
-        isFinished: false,
-        adminId: user.id,
+      await this.onlineTestService._createOnlineTest({
+        testId: data.id,
+        tempCodeId: tempCode.id,
       });
 
-      client.join(String(tempCode.code));
-      client.emit(ONLINE_TEST_EVENTS.TEST_STARTED, {
-        test: data,
-        tempCode,
-      });
-      return client.broadcast
-        .to(String(tempCode.code))
-        .emit(ONLINE_TEST_EVENTS.TEST_STARTED, {
-          test: data,
-          tempCode,
-        });
+      client.join(data.id);
+      const event = ONLINE_TEST_EVENTS.START_TEST;
+      const payload = isTestCreated
+        ? { test, tempCode }
+        : { test: data, tempCode };
+
+      client.emit(event, payload);
+      client.broadcast.to(data.id).emit(event, payload);
+    } catch (error) {
+      return this.logger.error(error);
     }
-
-    return;
   }
 
   @SubscribeMessage(ONLINE_TEST_EVENTS.START_ONLINE_TEST)
   async startOnlineTest(
     client: Socket,
-    payload: { test: any; durationInMinutes: number },
+    { test, durationInMinutes }: { test: any; durationInMinutes: number },
   ) {
-    const { test, durationInMinutes } = payload;
-    const user = await this.validateUser(client);
-    if (!user) {
-      return;
-    }
-    const testTempCode = await this.testTempCodeService.getTestTempCodeByTestId(
-      test.id,
-    );
-    const oldData = this.onlineTests.get(test.id);
-    if (oldData) {
-      return;
-    }
-    if (
-      oldData?.isFinished ||
-      oldData?.adminId !== user.id ||
-      oldData?.onlineUsers.size === 0
-    ) {
-      return;
-    }
-    this.onlineTests.set(test.id, {
-      test,
-      durationInMinutes,
-      code: testTempCode.code,
-      isFinished: false,
-      onlineUsers: oldData?.onlineUsers || new Map(),
-      adminId: user.id,
-    });
+    try {
+      const user = await this.validateUser(client);
+      if (!user) return;
 
-    client.broadcast
-      .to(String(testTempCode.code))
-      .emit(ONLINE_TEST_EVENTS.START_ONLINE_TEST, {
+      const existingTest = await this.onlineTestService._getOnlineTestByTestId(
+        test.id,
+      );
+      if (
+        !existingTest ||
+        existingTest.finishedAt ||
+        existingTest.test.ownerId !== user.id
+      )
+        return;
+
+      await this.onlineTestService._startOnlineTest(existingTest.id);
+      client.broadcast.to(test.id).emit(ONLINE_TEST_EVENTS.START_ONLINE_TEST, {
         test,
         durationInMinutes,
       });
+    } catch (error) {
+      return this.logger.error(error);
+    }
   }
 
   @SubscribeMessage(ONLINE_TEST_EVENTS.FINISH_ONLINE_TEST)
-  async finishOnlineTest(client: Socket, payload: { testId: string }) {
-    const { testId } = payload;
+  async finishOnlineTest(client: Socket, { testId }: { testId: string }) {
     const user = await this.validateUser(client);
-    if (!user) {
-      return;
-    }
-    const onlineTest = this.onlineTests.get(testId);
-    if (!onlineTest) {
-      return;
-    }
-    this.onlineTests.delete(testId);
+    if (!user) return;
 
-    client.broadcast
-      .to(String(onlineTest.code))
-      .emit(ONLINE_TEST_EVENTS.FINISH_ONLINE_TEST, { testId });
+    const test = await this.onlineTestService._getOnlineTestByTestId(testId);
+    if (!test) return;
+
+    await this.onlineTestService._finishOnlineTest(test.id);
+    client.broadcast.to(testId).emit(ONLINE_TEST_EVENTS.FINISH_ONLINE_TEST, {
+      testId,
+      results: test.results,
+    });
   }
 
   @SubscribeMessage(ONLINE_TEST_EVENTS.JOIN_ONLINE_TEST)
-  async joinOnlineTest(client: Socket, payload: { code: number }) {
+  async joinOnlineTest(client: Socket, { code }: { code: number }) {
     try {
-      const { code } = payload;
-    
-    const tempCode = await this.testTempCodeService.getTestTempCode(code);
-    if (!tempCode) {
-      return;
-    }
-    const onlineTest = this.onlineTests.get(tempCode.testId);
-    if (!onlineTest) {
-      return;
-    }
-      client.join(String(code));
-      onlineTest.onlineUsers.set(client.id, { clientId: client.id });
-      this.onlineTests.set(tempCode.testId, onlineTest);
-      console.log(this.onlineTests.get(tempCode.testId));
-      client.emit(ONLINE_TEST_EVENTS.JOIN_ONLINE_TEST, { code });
-    } catch (error) {
-      console.log(error);
+      const tempCode = await this.testTempCodeService.getTestTempCode(code);
+      if (!tempCode) return;
+
+      const test = await this.onlineTestService._getOnlineTestByTestId(
+        tempCode.testId,
+      );
+      if (!test) return;
+
+      client.join(tempCode.testId);
+
+      let user: User | null = null;
+      if (client.handshake.auth.accessToken) {
+        user = await this.validateUser(client);
+      }
+      if (!user && test.test.ownerId !== user?.id) {
+        await this.onlineTestService._addParticipantToOnlineTest(
+          tempCode.testId,
+          {
+            clientId: client.id,
+            status: 'pending',
+          },
+        );
+      }
+
+      const updated = await this.onlineTestService._getOnlineTestByTestId(
+        tempCode.testId,
+      );
+
+      client.emit(ONLINE_TEST_EVENTS.JOIN_ONLINE_TEST, {
+        onlineUsers: JSON.parse(updated?.participants as string),
+        testId: tempCode.testId,
+      });
+      this.server
+        .to(tempCode.testId)
+        .emit(ONLINE_TEST_EVENTS.JOIN_ONLINE_TEST, {
+          onlineUsers: JSON.parse(updated?.participants as string),
+          testId: tempCode.testId,
+        });
+    } catch (err) {
+      this.logger.error(err);
     }
   }
 
   @SubscribeMessage(ONLINE_TEST_EVENTS.LEAVE_ONLINE_TEST)
-  async leaveOnlineTest(client: Socket, payload: { code: number }) {
-    const { code } = payload;
+  async leaveOnlineTest(client: Socket, { code }: { code: number }) {
     const tempCode = await this.testTempCodeService.getTestTempCode(code);
-    if (!tempCode) {
-      return;
-    }
-    const onlineTest = this.onlineTests.get(tempCode.testId);
-    if (!onlineTest) {
-      return;
-    }
-    client.leave(String(code));
-    onlineTest.onlineUsers.delete(client.id);
-    this.onlineTests.set(tempCode.testId, onlineTest);
+    if (!tempCode) return;
+
+    const test = await this.onlineTestService._getOnlineTestByTestId(
+      tempCode.testId,
+    );
+    if (!test) return;
+
+    client.leave(tempCode.testId);
+
+    const updated =
+      await this.onlineTestService._removeParticipantFromOnlineTest(test.id, {
+        clientId: client.id,
+      });
+    client.emit(ONLINE_TEST_EVENTS.LEAVE_ONLINE_TEST, {
+      onlineUsers: JSON.parse(updated?.participants as string),
+    });
   }
 
   @SubscribeMessage(ONLINE_TEST_EVENTS.CHANGE_USER_DATA)
@@ -240,32 +200,34 @@ export class OnlineTestGateway
       firstName: string;
       lastName: string;
       email: string;
-      testId: string;
+      code: number;
     },
-  ): Promise<void> {
-    const { firstName, lastName, email, testId } = payload;
+  ) {
+    const { firstName, lastName, email, code } = payload;
+    if (!firstName || !lastName || !email || !code) return;
 
-    if (!firstName || !lastName || !email || !testId) {
-      return;
-    }
+    const tempCode = await this.testTempCodeService.getTestTempCode(code);
+    if (!tempCode) return;
 
-    const onlineTest = this.onlineTests.get(testId);
-    if (!onlineTest) {
-      return;
-    }
+    const test = await this.onlineTestService._getOnlineTestByTestId(
+      tempCode.testId,
+    );
+    if (!test) return;
 
-    const user = onlineTest.onlineUsers.get(client.id);
-    if (!user) {
-      return;
-    }
+    const user = JSON.parse(test?.participants as string).find(
+      (p: IParticipant) => p.clientId === client.id,
+    );
+    if (!user) return;
 
-    user.firstName = firstName;
-    user.lastName = lastName;
-    user.email = email;
+    Object.assign(user, { firstName, lastName, email, status: 'active' });
+    const updated = await this.onlineTestService._updateParticipantData(
+      test.id,
+      user,
+    );
 
-    this.server
-      .to(testId)
-      .emit(ONLINE_TEST_EVENTS.CHANGE_USER_DATA, onlineTest);
+    this.server.to(test.id).emit(ONLINE_TEST_EVENTS.CHANGE_USER_DATA, {
+      onlineUsers: JSON.parse(updated?.participants as string),
+    });
   }
 
   private async validateUser(client: Socket) {
@@ -274,7 +236,7 @@ export class OnlineTestGateway
     if (!user) {
       client.emit(ONLINE_TEST_EVENTS.ERROR, 'Invalid token');
       client.disconnect();
-      return;
+      return null;
     }
     return user;
   }
