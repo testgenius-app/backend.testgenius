@@ -84,14 +84,16 @@ export class OnlineTestGateway
   @SubscribeMessage(ONLINE_TEST_EVENTS.START_ONLINE_TEST)
   async startOnlineTest(
     client: Socket,
-    { test, durationInMinutes }: { test: any; durationInMinutes: number },
+    { code, durationInMinutes }: { code: number; durationInMinutes: number },
   ) {
     try {
       const user = await this.validateUser(client);
       if (!user) return;
+      const tempCode = await this.testTempCodeService.getTestTempCode(+code);
+      if (!tempCode) return;
 
       const existingTest = await this.onlineTestService._getOnlineTestByTestId(
-        test.id,
+        tempCode.testId,
       );
       if (
         !existingTest ||
@@ -101,10 +103,12 @@ export class OnlineTestGateway
         return;
 
       await this.onlineTestService._startOnlineTest(existingTest.id);
-      client.broadcast.to(test.id).emit(ONLINE_TEST_EVENTS.START_ONLINE_TEST, {
-        test,
-        durationInMinutes,
-      });
+      client.broadcast
+        .to(tempCode.testId)
+        .emit(ONLINE_TEST_EVENTS.START_ONLINE_TEST, {
+          test: existingTest,
+          durationInMinutes,
+        });
     } catch (error) {
       return this.logger.error(error);
     }
@@ -199,12 +203,12 @@ export class OnlineTestGateway
     payload: {
       firstName: string;
       lastName: string;
-      email: string;
+      email?: string;
       code: number;
     },
   ) {
     const { firstName, lastName, email, code } = payload;
-    if (!firstName || !lastName || !email || !code) return;
+    if (!firstName || !lastName || !code) return;
 
     const tempCode = await this.testTempCodeService.getTestTempCode(code);
     if (!tempCode) return;
@@ -214,19 +218,25 @@ export class OnlineTestGateway
     );
     if (!test) return;
 
-    const user = JSON.parse(test?.participants as string).find(
+    const participants = JSON.parse(
+      test?.participants as string,
+    ) as IParticipant[];
+    const user = participants.find(
       (p: IParticipant) => p.clientId === client.id,
     );
     if (!user) return;
 
     Object.assign(user, { firstName, lastName, email, status: 'active' });
+
     const updated = await this.onlineTestService._updateParticipantData(
       test.id,
       user,
     );
+    const updatedParticipants = JSON.parse(updated?.participants as string);
 
-    this.server.to(test.id).emit(ONLINE_TEST_EVENTS.CHANGE_USER_DATA, {
-      onlineUsers: JSON.parse(updated?.participants as string),
+    this.server.to(tempCode.testId).emit(ONLINE_TEST_EVENTS.CHANGE_USER_DATA, {
+      onlineUsers: updatedParticipants,
+      testId: tempCode.testId,
     });
   }
 

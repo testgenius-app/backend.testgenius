@@ -1,19 +1,19 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateOnlineTestDto } from './dto/create-online-test.dto';
 import { OnlineTest } from '@prisma/client';
 import { IParticipant } from './online-test.service';
 
 @Injectable()
-export class OnlineTestRepository implements OnModuleInit {
+export class OnlineTestRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async onModuleInit() {
-    await this.prisma.onlineTest.deleteMany({});
-    await this.prisma.testTempCode.deleteMany({});
-    await this.prisma.test.deleteMany({});
-    await this.prisma.verificationCode.deleteMany({});
-  }
+  // async onModuleInit() {
+  //   await this.prisma.onlineTest.deleteMany({});
+  //   await this.prisma.testTempCode.deleteMany({});
+  //   await this.prisma.test.deleteMany({});
+  //   await this.prisma.verificationCode.deleteMany({});
+  // }
 
   async createOnlineTest(
     createOnlineTestDto: CreateOnlineTestDto,

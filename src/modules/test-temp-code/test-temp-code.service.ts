@@ -25,12 +25,12 @@ export class TestTempCodeService {
   }
 
   deleteTestTempCodeByCode(code: number): Promise<TestTempCode | null> {
-
     return this.testTempCodeRepository.deleteTestTempCodeByCode(code);
   }
 
   async getTestTempCode(code: number): Promise<TestTempCode | null> {
     const tempCode = await this.testTempCodeRepository.getTestTempCode(code);
+    console.log(tempCode, 'tempCode', code);
     if (!tempCode) {
       throw new BadRequestException('Invalid test temp code');
     }
