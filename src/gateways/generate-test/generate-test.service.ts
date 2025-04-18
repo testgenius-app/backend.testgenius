@@ -1,11 +1,11 @@
 import { GoogleGenAI } from '@google/genai';
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TestService } from 'src/modules/test/test.service';
 import { TestParamsDto } from './dto/test-params.dto';
 
 @Injectable()
-export class GenerateTestService implements OnModuleInit {
+export class GenerateTestService {
   private readonly ai: GoogleGenAI;
   private readonly model: string;
   constructor(
@@ -17,27 +17,6 @@ export class GenerateTestService implements OnModuleInit {
       apiKey: this.configService.get('GEMINI_API_KEY'),
     });
     this.model = this.configService.get('GEMINI_API_MODEL');
-  }
-  async onModuleInit() {
-    // const res = await this.generateTest({
-    //   subject: 'Ingliz tili',
-    //   gradeLevel: 'advanced',
-    //   title: "Ingliz tili bo'yicha test",
-    //   topic: 'articles and to be',
-    //   description: 'Ingliz tili boyicha advanced darajada test',
-    //   sectionTypes: ['fill_in_the_blank', 'true_false', 'multiple_choice', 'short_answer', 'matching_the_headings'],
-    //   questionsPerSection: 5,
-    //   tags: ['ingliz-tili', 'advanced', 'assessment'],
-    //   sectionCount: 5,
-    // });
-    // const fs = require('fs');
-    // const json = JSON.stringify(res, null, 2);
-    // fs.writeFileSync('test.json', json);
-    // await this.testService.create(
-    //   { id: 'c338da2a-3d45-4ac3-9450-22fc9688a564' },
-    //   res,
-    // );
-    this.logger.log('Test generate module initialized');
   }
 
   async generateTest(testParams: TestParamsDto) {
@@ -54,7 +33,15 @@ export class GenerateTestService implements OnModuleInit {
         topic = 'random',
       } = testParams;
 
-      const sectionTypes = ['multiple_choice', 'short_answer', 'matching_the_headings', 'reading_passage','fill_in_the_blank','true_false','matching'];
+      const sectionTypes = [
+        'multiple_choice',
+        'short_answer',
+        'matching_the_headings',
+        'reading_passage',
+        'fill_in_the_blank',
+        'true_false',
+        'matching',
+      ];
       // Build the instruction prompt
       const prompt = `
     You are an expert educational test creator with deep knowledge of ${subject} at the ${gradeLevel} level.

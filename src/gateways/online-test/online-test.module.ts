@@ -1,5 +1,4 @@
 import { Logger, Module } from '@nestjs/common';
-import { OnlineTestService } from './online-test.service';
 import { OnlineTestGateway } from './online-test.gateway';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { JwtTokenService } from '../generate-test/jwt-token.service';
@@ -9,7 +8,8 @@ import { JwtService } from '@nestjs/jwt';
 import { TestTempCodeRepository } from 'src/modules/test-temp-code/test-temp-code.repository';
 import { TestService } from 'src/modules/test/test.service';
 import { TestRepository } from 'src/modules/test/test.repository';
-
+import { OnlineTestRepository } from 'src/modules/online-test/online-test.repository';
+import { OnlineTestService } from 'src/modules/online-test/online-test.service';
 @Module({
   providers: [
     OnlineTestService,
@@ -23,8 +23,8 @@ import { TestRepository } from 'src/modules/test/test.repository';
     TestTempCodeRepository,
     TestService,
     TestRepository,
-    PrismaService,
+    OnlineTestRepository,
   ],
-  exports: [OnlineTestService, OnlineTestGateway],
+  exports: [OnlineTestGateway],
 })
-export class OnlineTestModule {}
+export class OnlineTestGatewayModule {}

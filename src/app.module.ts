@@ -8,7 +8,8 @@ import { MailModule } from './core/mail/mail.module';
 import { GenerateTestModule } from './gateways/generate-test/generate-test.module';
 import { TestModule } from './modules/test/test.module';
 import { TestTempCodeModule } from './modules/test-temp-code/test-temp-code.module';
-import { OnlineTestModule } from './gateways/online-test/online-test.module';
+import { OnlineTestGatewayModule } from './gateways/online-test/online-test.module';
+import { OnlineTestModule } from './modules/online-test/online-test.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { OnlineTestModule } from './gateways/online-test/online-test.module';
     GenerateTestModule,
     TestModule,
     TestTempCodeModule,
+    OnlineTestGatewayModule,
     OnlineTestModule,
   ],
 })
