@@ -226,8 +226,8 @@ export class OnlineTestGateway
     );
     if (!user) return;
 
-    Object.assign(user, { firstName, lastName, email, status: 'active' });
-
+    Object.assign(user, { firstName, lastName, email });
+    user.status = 'active';
     const updated = await this.onlineTestService._updateParticipantData(
       test.id,
       user,

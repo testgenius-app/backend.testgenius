@@ -30,7 +30,6 @@ export class TestTempCodeService {
 
   async getTestTempCode(code: number): Promise<TestTempCode | null> {
     const tempCode = await this.testTempCodeRepository.getTestTempCode(code);
-    console.log(tempCode, 'tempCode', code);
     if (!tempCode) {
       throw new BadRequestException('Invalid test temp code');
     }

@@ -1,7 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TestService } from 'src/modules/test/test.service';
 import { TestParamsDto } from './dto/test-params.dto';
 
 @Injectable()
@@ -11,7 +10,6 @@ export class GenerateTestService {
   constructor(
     private readonly logger: Logger,
     private readonly configService: ConfigService,
-    private readonly testService: TestService,
   ) {
     this.ai = new GoogleGenAI({
       apiKey: this.configService.get('GEMINI_API_KEY'),
