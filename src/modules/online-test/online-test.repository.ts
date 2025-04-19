@@ -127,6 +127,7 @@ export class OnlineTestRepository {
         p.firstName = participant.firstName;
         p.lastName = participant.lastName;
         p.email = participant.email;
+        p.status = participant.status;
       }
     });
     return this.prisma.onlineTest.update({
