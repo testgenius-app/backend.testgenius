@@ -18,6 +18,7 @@ import { IUser } from 'src/core/types/iuser.type';
 import { User } from 'src/common/decorators/user.decorator';
 import { UserDto } from './dto/user.dto';
 
+// TODO: add logging
 @Injectable()
 export class AuthService {
   constructor(
