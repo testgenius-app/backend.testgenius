@@ -7,7 +7,7 @@ export const ONLINE_TEST_EVENTS = {
   ONLINE_TEST_ENDED: 'online:test:ended',
   JOIN_ONLINE_TEST: 'join:online:test',
   LEAVE_ONLINE_TEST: 'leave:online:test',
-
+  SELECT_ANSWER: 'select:test:answer',
   CHANGE_USER_DATA: 'change:user:data',
   ERROR: 'error',
 };

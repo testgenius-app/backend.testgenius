@@ -103,7 +103,7 @@ export class OnlineTestGateway
         return;
 
       await this.onlineTestService._startOnlineTest(existingTest.id);
-      client.broadcast
+      this.server
         .to(tempCode.testId)
         .emit(ONLINE_TEST_EVENTS.START_ONLINE_TEST, {
           test: existingTest,
@@ -133,12 +133,13 @@ export class OnlineTestGateway
   async joinOnlineTest(client: Socket, { code }: { code: number }) {
     try {
       const tempCode = await this.testTempCodeService.getTestTempCode(code);
-      if (!tempCode) return;
+      if (!tempCode)
+        return client.emit(ONLINE_TEST_EVENTS.ERROR, 'Online test not found');
 
       const test = await this.onlineTestService._getOnlineTestByTestId(
         tempCode.testId,
       );
-      if (!test) return;
+      if (!test) return client.emit(ONLINE_TEST_EVENTS.ERROR, 'Test not found');
 
       client.join(tempCode.testId);
 
@@ -240,6 +241,85 @@ export class OnlineTestGateway
     });
   }
 
+  @SubscribeMessage(ONLINE_TEST_EVENTS.SELECT_ANSWER)
+  async handleSelectTestAnswer(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    payload: {
+      testId: string;
+      sectionId: string;
+      taskId: string;
+      questionId: string;
+      answer: string;
+    },
+  ) {
+    try {
+      const { testId, sectionId, taskId, questionId, answer } = payload;
+
+      // Get the online test
+      const onlineTest =
+        await this.onlineTestService._getOnlineTestByTestId(testId);
+      if (!onlineTest) {
+        return client.emit(ONLINE_TEST_EVENTS.ERROR, {
+          message: 'Test not found',
+        });
+      }
+
+      // Check if test is started and not finished
+      if (!onlineTest.startedAt || onlineTest.finishedAt) {
+        return client.emit(ONLINE_TEST_EVENTS.ERROR, {
+          message: 'Test is not active',
+        });
+      }
+
+      // Get the participant
+      const participants = JSON.parse(
+        onlineTest.participants as string,
+      ) as IParticipant[];
+      const participant = participants.find((p) => p.clientId === client.id);
+      if (!participant) {
+        return client.emit(ONLINE_TEST_EVENTS.ERROR, {
+          message: 'Participant not found',
+        });
+      }
+
+      // Update the results
+      const results = onlineTest.results
+        ? JSON.parse(onlineTest.results as string)
+        : {};
+      if (!results[participant.clientId]) {
+        results[participant.clientId] = {};
+      }
+      if (!results[participant.clientId][sectionId]) {
+        results[participant.clientId][sectionId] = {};
+      }
+      if (!results[participant.clientId][sectionId][taskId]) {
+        results[participant.clientId][sectionId][taskId] = {};
+      }
+
+      results[participant.clientId][sectionId][taskId][questionId] = answer;
+
+      // Update the online test with new results
+      await this.onlineTestService._updateOnlineTestResults(
+        onlineTest.id,
+        results,
+      );
+
+      // Broadcast the answer selection to all participants
+      this.server.to(testId).emit(ONLINE_TEST_EVENTS.SELECT_ANSWER, {
+        clientId: client.id,
+        sectionId,
+        taskId,
+        questionId,
+        answer,
+      });
+    } catch (error) {
+      this.logger.error(error);
+      client.emit(ONLINE_TEST_EVENTS.ERROR, {
+        message: 'Failed to process answer selection',
+      });
+    }
+  }
   private async validateUser(client: Socket) {
     const token = client.handshake.auth.accessToken;
     const user = await this.jwtTokenService.verifyToken(token);
