@@ -2,8 +2,10 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateTestDto } from './dto/create-test.dto';
 import { IUser } from 'src/core/types/iuser.type';
+import { Test } from '@prisma/client';
+import { FilterDto } from './dto/filter.dto';
 
-const includeTest = {
+const include = {
   sections: {
     include: {
       tasks: {
@@ -97,10 +99,41 @@ export class TestRepository {
             },
           },
         },
-        include: includeTest,
+        include,
       });
     } catch (error) {
       throw new BadRequestException('Test creation failed', error.message);
     }
+  }
+
+  async getTestById(id: string): Promise<Test> {
+    return await this.prisma.test.findUnique({
+      where: { id },
+      include,
+    });
+  }
+
+  async getTestsByOwnerId(
+    ownerId: string,
+    filterDto: FilterDto,
+  ): Promise<{
+    tests: Test[];
+    count: number;
+  }> {
+    const [tests, count] = await this.prisma.$transaction([
+      this.prisma.test.findMany({
+        where: { ownerId },
+        include,
+        orderBy: {
+          createdAt: filterDto.order,
+        },
+        skip: (filterDto.page - 1) * filterDto.limit,
+        take: filterDto.limit,
+      }),
+      this.prisma.test.count({
+        where: { ownerId },
+      }),
+    ]);
+    return { tests, count };
   }
 }
