@@ -1,19 +1,29 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateOnlineTestDto } from './dto/create-online-test.dto';
 import { OnlineTest } from '@prisma/client';
 import { IParticipant } from './online-test.service';
-
+const include = {
+  sections: {
+    include: {
+      tasks: {
+        include: {
+          questions: true,
+        },
+      },
+    },
+  },
+};
 @Injectable()
-export class OnlineTestRepository {
+export class OnlineTestRepository implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
 
-  // async onModuleInit() {
-  //   await this.prisma.onlineTest.deleteMany({});
-  //   await this.prisma.testTempCode.deleteMany({});
-  //   await this.prisma.test.deleteMany({});
-  //   await this.prisma.verificationCode.deleteMany({});
-  // }
+  async onModuleInit() {
+    await this.prisma.onlineTest.deleteMany({});
+    await this.prisma.testTempCode.deleteMany({});
+    await this.prisma.test.deleteMany({});
+    await this.prisma.verificationCode.deleteMany({});
+  }
 
   async createOnlineTest(
     createOnlineTestDto: CreateOnlineTestDto,
@@ -36,11 +46,18 @@ export class OnlineTestRepository {
     return onlineTest;
   }
 
-  getOnlineTestByTestId(testId: string) {
-    return this.prisma.onlineTest.findFirst({
-      where: { test: { id: testId } },
-      include: { test: { include: { owner: true } } },
-    });
+  async getOnlineTestByTestId(testId: string) {
+    const [onlineTest, test] = await Promise.all([
+      this.prisma.onlineTest.findFirst({
+        where: { test: { id: testId } },
+        include: { test: true },
+      }),
+      this.prisma.test.findUnique({ where: { id: testId }, include }),
+    ]);
+    onlineTest.test = test;
+    console.log(onlineTest);
+
+    return onlineTest;
   }
 
   async startOnlineTest(onlineTestId: string): Promise<OnlineTest> {
@@ -84,6 +101,16 @@ export class OnlineTestRepository {
       where: { id: onlineTestId },
     });
     return onlineTest;
+  }
+
+  async updateOnlineTestResults(
+    onlineTestId: string,
+    results: any,
+  ): Promise<OnlineTest> {
+    return this.prisma.onlineTest.update({
+      where: { id: onlineTestId },
+      data: { results: JSON.stringify(results) },
+    });
   }
 
   async deleteOnlineTest(onlineTestId: string): Promise<OnlineTest> {

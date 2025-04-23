@@ -41,6 +41,16 @@ export class OnlineTestService {
     return this.onlineTestRepository.getOnlineTestResults(onlineTestId);
   }
 
+  async _updateOnlineTestResults(
+    onlineTestId: string,
+    results: any,
+  ): Promise<OnlineTest> {
+    return this.onlineTestRepository.updateOnlineTestResults(
+      onlineTestId,
+      results,
+    );
+  }
+
   async _deleteOnlineTest(onlineTestId: string): Promise<OnlineTest> {
     return this.onlineTestRepository.deleteOnlineTest(onlineTestId);
   }

@@ -24,7 +24,7 @@ export class JwtAuthGuard implements CanActivate {
     }
     const bearer = authHeader.split(' ')[0];
     const token = authHeader.split(' ')[1];
-
+    console.log(bearer, token);
     if (bearer !== 'Bearer' || !token || token === 'undefined') {
       throw new ForbiddenException('TOKEN_NOT_PROVIDED');
     }
@@ -38,6 +38,7 @@ export class JwtAuthGuard implements CanActivate {
       req.user = iUser;
       return true;
     } catch (e) {
+      console.log(e);
       if (e.status && e.status === 403) {
         throw e;
       }
