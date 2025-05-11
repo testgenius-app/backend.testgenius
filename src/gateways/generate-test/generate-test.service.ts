@@ -124,10 +124,6 @@ export class GenerateTestService {
     Make sure your JSON is valid and properly formatted. Do NOT include any explanations, comments, or text outside the JSON structure.
     `;
 
-      this.logger.log(
-        `Generating ${subject} test for grade level ${gradeLevel}`,
-      );
-
       const response = await this.ai.models.generateContent({
         model: this.model,
         contents: [prompt],
@@ -139,13 +135,9 @@ export class GenerateTestService {
             .split('```')[0]
             .trim();
           const generatedTest = JSON.parse(jsonStr);
-          this.logger.log(
-            `Successfully generated test: ${generatedTest.title}`,
-          );
           return generatedTest;
         }
         const generatedTest = JSON.parse(response.text);
-        this.logger.log(`Successfully generated test: ${generatedTest.title}`);
         return generatedTest;
       } catch (error) {
         this.logger.error('Generated content is not valid JSON');

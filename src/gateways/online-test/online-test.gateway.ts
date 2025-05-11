@@ -49,33 +49,25 @@ export class OnlineTestGateway
   }
 
   @SubscribeMessage(ONLINE_TEST_EVENTS.START_TEST)
-  async startTest(
-    client: Socket,
-    { test, isTestCreated }: { test: any; isTestCreated: boolean },
-  ) {
+  async startTest(client: Socket, { testId }: { testId: string }) {
     try {
       const user = await this.validateUser(client);
       if (!user) return;
 
-      const data = isTestCreated
-        ? test
-        : await this.testService.create(user, test);
-      const tempCode = await this.testTempCodeService.createTestTempCode(
-        data.id,
-      );
+      const test = await this.testService.getTestById(testId, { id: user.id });
+      const tempCode =
+        await this.testTempCodeService.createTestTempCode(testId);
       await this.onlineTestService._createOnlineTest({
-        testId: data.id,
+        testId,
         tempCodeId: tempCode.id,
       });
 
-      client.join(data.id);
+      client.join(testId);
       const event = ONLINE_TEST_EVENTS.START_TEST;
-      const payload = isTestCreated
-        ? { test, tempCode }
-        : { test: data, tempCode };
+      const payload = { test, tempCode };
 
       client.emit(event, payload);
-      client.broadcast.to(data.id).emit(event, payload);
+      client.broadcast.to(testId).emit(event, payload);
     } catch (error) {
       return this.logger.error(error);
     }

@@ -10,6 +10,7 @@ import { GenerateTestService } from './generate-test.service';
 import { Logger } from '@nestjs/common';
 import { GENERATE_TEST_EVENTS } from './events/generate-test.events';
 import { JwtTokenService } from './jwt-token.service';
+import { TestService } from 'src/modules/test/test.service';
 
 @WebSocketGateway({
   namespace: 'generate-test',
@@ -26,15 +27,14 @@ export class GenerateTestGateway
     private readonly generateTestService: GenerateTestService,
     private readonly logger: Logger,
     private readonly jwtTokenService: JwtTokenService,
+    private readonly testService: TestService,
   ) {}
   @WebSocketServer()
   server: Server;
 
   async handleConnection(client: Socket) {
-    this.logger.log('Client connected to generate-test gateway');
     const accessToken = client.handshake.auth.accessToken;
 
-    this.logger.log('Access token', client.handshake.auth);
     if (!accessToken) {
       client.disconnect();
       return;
@@ -55,8 +55,9 @@ export class GenerateTestGateway
 
   @SubscribeMessage(GENERATE_TEST_EVENTS.GENERATE_TEST_BY_FORM)
   async handleTest(client: Socket, data: any) {
-    await this.validateUser(client);
-    const test = await this.generateTestService.generateTest(data);
+    const user = await this.validateUser(client);
+    const testData = await this.generateTestService.generateTest(data);
+    const test = await this.testService.create(user, testData);
     client.emit(GENERATE_TEST_EVENTS.GENERATE_TEST_SUCCESS, test);
   }
 

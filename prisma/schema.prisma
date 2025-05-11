@@ -22,7 +22,7 @@ model User {
   isVerified     Boolean  @default(false) @map("is_verified")
   provider       Providers @default(EMAIL)
   tests          Test[]
-  @@map("User")
+  @@map("users")
 }
 
 enum Role {

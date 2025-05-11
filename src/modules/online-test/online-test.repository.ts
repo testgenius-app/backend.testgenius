@@ -55,7 +55,6 @@ export class OnlineTestRepository implements OnModuleInit {
       this.prisma.test.findUnique({ where: { id: testId }, include }),
     ]);
     onlineTest.test = test;
-    console.log(onlineTest);
 
     return onlineTest;
   }
