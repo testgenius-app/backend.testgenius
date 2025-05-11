@@ -12,7 +12,7 @@ import { Server, Socket } from 'socket.io';
 import { JwtTokenService } from '../generate-test/jwt-token.service';
 import { ONLINE_TEST_EVENTS } from './events/online-test.events';
 import { TestTempCodeService } from 'src/modules/test-temp-code/test-temp-code.service';
-import { TestService } from 'src/modules/test/test.service';
+import { TestService } from 'src/modules/test/services/test.service';
 import { User } from '@prisma/client';
 import {
   IParticipant,

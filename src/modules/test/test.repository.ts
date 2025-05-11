@@ -106,7 +106,7 @@ export class TestRepository {
     }
   }
 
-  async getTestById(id: string): Promise<Test> {
+  async getTestById(id: string): Promise<any> {
     return await this.prisma.test.findUnique({
       where: { id },
       include,

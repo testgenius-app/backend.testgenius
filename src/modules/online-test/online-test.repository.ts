@@ -19,10 +19,10 @@ export class OnlineTestRepository implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit() {
-    await this.prisma.onlineTest.deleteMany({});
-    await this.prisma.testTempCode.deleteMany({});
-    await this.prisma.test.deleteMany({});
-    await this.prisma.verificationCode.deleteMany({});
+    // await this.prisma.onlineTest.deleteMany({});
+    // await this.prisma.testTempCode.deleteMany({});
+    // await this.prisma.test.deleteMany({});
+    // await this.prisma.verificationCode.deleteMany({});
   }
 
   async createOnlineTest(

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class FilterDto {
@@ -7,6 +8,7 @@ export class FilterDto {
     minimum: 1,
     default: 1,
   })
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @IsOptional()
@@ -17,6 +19,7 @@ export class FilterDto {
     minimum: 1,
     default: 10,
   })
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @IsOptional()

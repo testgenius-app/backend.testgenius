@@ -6,10 +6,12 @@ import { TestTempCodeService } from 'src/modules/test-temp-code/test-temp-code.s
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { TestTempCodeRepository } from 'src/modules/test-temp-code/test-temp-code.repository';
-import { TestService } from 'src/modules/test/test.service';
+import { TestService } from 'src/modules/test/services/test.service';
 import { TestRepository } from 'src/modules/test/test.repository';
 import { OnlineTestRepository } from 'src/modules/online-test/online-test.repository';
 import { OnlineTestService } from 'src/modules/online-test/online-test.service';
+import { DocxService } from 'src/modules/test/services/docx/docx.service';
+import { PdfService } from 'src/modules/test/services/pdf/pdf.service';
 @Module({
   providers: [
     OnlineTestService,
@@ -24,6 +26,8 @@ import { OnlineTestService } from 'src/modules/online-test/online-test.service';
     TestService,
     TestRepository,
     OnlineTestRepository,
+    DocxService,
+    PdfService
   ],
   exports: [OnlineTestGateway],
 })

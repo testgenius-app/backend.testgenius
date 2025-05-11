@@ -1,12 +1,14 @@
 import { Logger, Module } from '@nestjs/common';
 import { GenerateTestService } from './generate-test.service';
 import { GenerateTestGateway } from './generate-test.gateway';
-import { TestService } from 'src/modules/test/test.service';
+import { TestService } from 'src/modules/test/services/test.service';
 import { TestRepository } from 'src/modules/test/test.repository';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { JwtTokenService } from './jwt-token.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { DocxService } from 'src/modules/test/services/docx/docx.service';
+import { PdfService } from 'src/modules/test/services/pdf/pdf.service';
 
 @Module({
   providers: [
@@ -19,6 +21,9 @@ import { ConfigService } from '@nestjs/config';
     JwtTokenService,
     JwtService,
     ConfigService,
+    DocxService,
+    PdfService,
+    
   ],
   exports: [GenerateTestService, GenerateTestGateway],
 })
