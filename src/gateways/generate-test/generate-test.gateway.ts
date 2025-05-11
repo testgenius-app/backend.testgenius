@@ -10,7 +10,7 @@ import { GenerateTestService } from './generate-test.service';
 import { Logger } from '@nestjs/common';
 import { GENERATE_TEST_EVENTS } from './events/generate-test.events';
 import { JwtTokenService } from './jwt-token.service';
-import { TestService } from 'src/modules/test/test.service';
+import { TestService } from 'src/modules/test/services/test.service';
 
 @WebSocketGateway({
   namespace: 'generate-test',
