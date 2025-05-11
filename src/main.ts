@@ -13,7 +13,7 @@ async function bootstrap() {
   app.enableShutdownHooks();
   app.enableVersioning({ type: VersioningType.URI });
   app.setGlobalPrefix(configService.get<string>('GLOBAL_PREFIX'));
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
 
   // Configurating Documentation
   const config = new DocumentBuilder()
