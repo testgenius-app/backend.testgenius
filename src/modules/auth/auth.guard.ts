@@ -24,13 +24,12 @@ export class JwtAuthGuard implements CanActivate {
     }
     const bearer = authHeader.split(' ')[0];
     const token = authHeader.split(' ')[1];
-    console.log(bearer, token);
     if (bearer !== 'Bearer' || !token || token === 'undefined') {
       throw new ForbiddenException('TOKEN_NOT_PROVIDED');
     }
     try {
       const { userId } = this.jwtService.verify(token, {
-        secret: this.configService.get<string>('JWT_SECRET'),
+        secret: this.configService.get<string>('ACCESS_TOKEN_SECRET'),
       });
       const iUser: IUser = {
         id: userId,
@@ -38,7 +37,7 @@ export class JwtAuthGuard implements CanActivate {
       req.user = iUser;
       return true;
     } catch (e) {
-      console.log(e);
+      console.log('e', e);
       if (e.status && e.status === 403) {
         throw e;
       }
