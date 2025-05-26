@@ -15,7 +15,8 @@ export class GoogleService {
   async auth(body: UserProfileDto): Promise<ITokens> {
     let user = await this.prisma.user.findUnique({
       where: {
-        id: body.providerId,
+        email: body.email,
+        provider: Providers.GOOGLE,
       },
     });
 
@@ -36,6 +37,7 @@ export class GoogleService {
         },
       });
     }
+
     return this.tokenService.generateTokens(user.id);
   }
 }
