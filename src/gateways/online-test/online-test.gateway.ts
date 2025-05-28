@@ -23,6 +23,17 @@ import {
   IParticipantResult,
   IOnlineTestResults,
 } from './types/online-test.types';
+import {
+  IStartTestResponse,
+  IStartOnlineTestResponse,
+  IFinishOnlineTestResponse,
+  IJoinOnlineTestResponse,
+  ILeaveOnlineTestResponse,
+  IChangeUserDataResponse,
+  ISelectAnswerResponse,
+  IFinishOnlineTestAsParticipantResponse,
+  IErrorResponse,
+} from './types/online-test.responses';
 @WebSocketGateway({
   namespace: 'online-test',
   transports: ['websocket'],
@@ -69,7 +80,7 @@ export class OnlineTestGateway
 
       client.join(test.id);
       const event = ONLINE_TEST_EVENTS.START_TEST;
-      const payload = { test, tempCode };
+      const payload: IStartTestResponse = { test, tempCode };
 
       client.emit(event, payload);
       client.broadcast.to(test.id).emit(event, payload);
@@ -102,12 +113,61 @@ export class OnlineTestGateway
 
       await this.onlineTestService._startOnlineTest(existingTest.id);
       
+      const payload: IStartOnlineTestResponse = {
+        test: existingTest,
+        durationInMinutes,
+      };
+      
       this.server
         .to(tempCode.testId)
-        .emit(ONLINE_TEST_EVENTS.START_ONLINE_TEST, {
-          test: existingTest,
-          durationInMinutes,
-        });
+        .emit(ONLINE_TEST_EVENTS.START_ONLINE_TEST, payload);
+
+      // Set up automatic test completion after duration
+      const durationInMs = durationInMinutes * 60 * 1000;
+      setTimeout(async () => {
+        try {
+          // Check if test is still active (not manually finished)
+          const currentTest = await this.onlineTestService._getOnlineTestByTestId(tempCode.testId, true);
+          if (!currentTest || currentTest.finishedAt) return;
+
+          // Finish the test
+          await this.onlineTestService._finishOnlineTest(currentTest.id);
+
+          // Get final results
+          const finalResults = await this.onlineTestService._getOnlineTestResults(currentTest.id);
+          const results = finalResults.results ? JSON.parse(finalResults.results as string) : { results: {}, lastUpdated: new Date() };
+
+          // Update participant statuses to completed
+          const participants = JSON.parse(finalResults.participants as string) as IParticipant[];
+          const updatedParticipants = participants.map(participant => ({
+            ...participant,
+            status: 'completed'
+          }));
+
+          // Update the test with completed participant statuses
+          await this.onlineTestService._updateOnlineTest(currentTest.id, {
+            participants: JSON.stringify(updatedParticipants)
+          });
+
+          const finishPayload: IFinishOnlineTestResponse = {
+            testId: tempCode.testId,
+            results
+          };
+
+          // Broadcast to all participants that the test is finished
+          this.server.to(tempCode.testId).emit(ONLINE_TEST_EVENTS.FINISH_ONLINE_TEST, finishPayload);
+
+          // Disconnect all participants from the test room
+          const sockets = await this.server.in(tempCode.testId).fetchSockets();
+          for (const socket of sockets) {
+            if (socket.id !== client.id) { // Don't disconnect the owner
+              socket.leave(tempCode.testId);
+            }
+          }
+        } catch (error) {
+          this.logger.error(`Error in automatic test completion: ${error.message}`);
+        }
+      }, durationInMs);
     } catch (error) {
       return this.logger.error(error);
     }
@@ -115,17 +175,63 @@ export class OnlineTestGateway
 
   @SubscribeMessage(ONLINE_TEST_EVENTS.FINISH_ONLINE_TEST)
   async finishOnlineTest(client: Socket, { testId }: { testId: string }) {
-    const user = await this.validateUser(client);
-    if (!user) return;
+    try {
+      const user = await this.validateUser(client);
+      if (!user) return;
 
-    const test = await this.onlineTestService._getOnlineTestByTestId(testId);
-    if (!test) return;
+      const test = await this.onlineTestService._getOnlineTestByTestId(testId, true);
+      if (!test) {
+        return client.emit(ONLINE_TEST_EVENTS.ERROR, { message: 'Test not found' } as IErrorResponse);
+      }
 
-    await this.onlineTestService._finishOnlineTest(test.id);
-    client.broadcast.to(testId).emit(ONLINE_TEST_EVENTS.FINISH_ONLINE_TEST, {
-      testId,
-      results: test.results,
-    });
+      // Check if test is already finished
+      if (test.finishedAt) {
+        return client.emit(ONLINE_TEST_EVENTS.ERROR, { message: 'Test is already finished' } as IErrorResponse);
+      }
+
+      // Check if user is the test owner
+      if (test.test.ownerId !== user.id) {
+        return client.emit(ONLINE_TEST_EVENTS.ERROR, { message: 'Only test owner can finish the test' } as IErrorResponse);
+      }
+
+      // Finish the test
+      await this.onlineTestService._finishOnlineTest(test.id);
+
+      // Get final results
+      const finalResults = await this.onlineTestService._getOnlineTestResults(test.id);
+      const results = finalResults.results ? JSON.parse(finalResults.results as string) : { results: {}, lastUpdated: new Date() };
+
+      // Update participant statuses to completed
+      const participants = JSON.parse(finalResults.participants as string) as IParticipant[];
+      const updatedParticipants = participants.map(participant => ({
+        ...participant,
+        status: 'completed'
+      }));
+
+      // Update the test with completed participant statuses
+      await this.onlineTestService._updateOnlineTest(test.id, {
+        participants: JSON.stringify(updatedParticipants)
+      });
+
+      const payload: IFinishOnlineTestResponse = {
+        testId,
+        results
+      };
+
+      // Broadcast to all participants that the test is finished
+      this.server.to(testId).emit(ONLINE_TEST_EVENTS.FINISH_ONLINE_TEST, payload);
+
+      // Disconnect all participants from the test room
+      const sockets = await this.server.in(testId).fetchSockets();
+      for (const socket of sockets) {
+        if (socket.id !== client.id) { // Don't disconnect the owner
+          socket.leave(testId);
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Error finishing online test: ${error.message}`);
+      client.emit(ONLINE_TEST_EVENTS.ERROR, { message: 'Failed to finish the test' } as IErrorResponse);
+    }
   }
 
   @SubscribeMessage(ONLINE_TEST_EVENTS.JOIN_ONLINE_TEST)
@@ -133,13 +239,23 @@ export class OnlineTestGateway
     try {
       const tempCode = await this.testTempCodeService.getTestTempCode(code);
       if (!tempCode)
-        return client.emit(ONLINE_TEST_EVENTS.ERROR, 'Online test not found');
+        return client.emit(ONLINE_TEST_EVENTS.ERROR, { message: 'Online test not found' } as IErrorResponse);
 
       const test = await this.onlineTestService._getOnlineTestByTestId(
         tempCode.testId,
         false, // Don't include answers for participants
       );
-      if (!test) return client.emit(ONLINE_TEST_EVENTS.ERROR, 'Test not found');
+      if (!test) return client.emit(ONLINE_TEST_EVENTS.ERROR, { message: 'Test not found' } as IErrorResponse);
+
+      // Check if test has already started
+      if (test.startedAt) {
+        return client.emit(ONLINE_TEST_EVENTS.ERROR, { message: 'Test has already started. New participants cannot join.' } as IErrorResponse);
+      }
+
+      // Check if test is finished
+      if (test.finishedAt) {
+        return client.emit(ONLINE_TEST_EVENTS.ERROR, { message: 'Test has already finished' } as IErrorResponse);
+      }
 
       client.join(tempCode.testId);
 
@@ -162,20 +278,19 @@ export class OnlineTestGateway
         false, // Don't include answers for participants
       );
 
-      client.emit(ONLINE_TEST_EVENTS.JOIN_ONLINE_TEST, {
+      const payload: IJoinOnlineTestResponse = {
         onlineUsers: JSON.parse(updated?.participants as string),
         testId: tempCode.testId,
         test: updated?.test,
-      });
+      };
+
+      client.emit(ONLINE_TEST_EVENTS.JOIN_ONLINE_TEST, payload);
       this.server
         .to(tempCode.testId)
-        .emit(ONLINE_TEST_EVENTS.JOIN_ONLINE_TEST, {
-          onlineUsers: JSON.parse(updated?.participants as string),
-          testId: tempCode.testId,
-          test: updated?.test,
-        });
+        .emit(ONLINE_TEST_EVENTS.JOIN_ONLINE_TEST, payload);
     } catch (err) {
       this.logger.error(err);
+      client.emit(ONLINE_TEST_EVENTS.ERROR, { message: 'Failed to join the test' } as IErrorResponse);
     }
   }
 
@@ -196,9 +311,10 @@ export class OnlineTestGateway
         clientId: client.id,
         status: 'completed',
       });
-    client.emit(ONLINE_TEST_EVENTS.LEAVE_ONLINE_TEST, {
+    const payload: ILeaveOnlineTestResponse = {
       onlineUsers: JSON.parse(updated?.participants as string),
-    });
+    };
+    client.emit(ONLINE_TEST_EVENTS.LEAVE_ONLINE_TEST, payload);
   }
 
   @SubscribeMessage(ONLINE_TEST_EVENTS.CHANGE_USER_DATA)
@@ -239,10 +355,12 @@ export class OnlineTestGateway
     );
     const updatedParticipants = JSON.parse(updated?.participants as string);
 
-    this.server.to(tempCode.testId).emit(ONLINE_TEST_EVENTS.CHANGE_USER_DATA, {
+    const responsePayload: IChangeUserDataResponse = {
       onlineUsers: updatedParticipants,
       testId: tempCode.testId,
-    });
+    };
+
+    this.server.to(tempCode.testId).emit(ONLINE_TEST_EVENTS.CHANGE_USER_DATA, responsePayload);
   }
 
   @SubscribeMessage(ONLINE_TEST_EVENTS.SELECT_ANSWER)
@@ -263,25 +381,19 @@ export class OnlineTestGateway
       // Get the online test with answers for validation
       const onlineTest = await this.onlineTestService._getOnlineTestByTestId(testId, true);
       if (!onlineTest) {
-        return client.emit(ONLINE_TEST_EVENTS.ERROR, {
-          message: 'Test not found',
-        });
+        return client.emit(ONLINE_TEST_EVENTS.ERROR, { message: 'Test not found' } as IErrorResponse);
       }
 
       // Check if test is started and not finished
       if (!onlineTest.startedAt || onlineTest.finishedAt) {
-        return client.emit(ONLINE_TEST_EVENTS.ERROR, {
-          message: 'Test is not active',
-        });
+        return client.emit(ONLINE_TEST_EVENTS.ERROR, { message: 'Test is not active' } as IErrorResponse);
       }
 
       // Get the participant
       const participants = JSON.parse(onlineTest.participants as string) as IParticipant[];
       const participant = participants.find((p) => p.clientId === client.id);
       if (!participant) {
-        return client.emit(ONLINE_TEST_EVENTS.ERROR, {
-          message: 'Participant not found',
-        });
+        return client.emit(ONLINE_TEST_EVENTS.ERROR, { message: 'Participant not found' } as IErrorResponse);
       }
 
       // Get current results or initialize new ones
@@ -335,8 +447,7 @@ export class OnlineTestGateway
         updatedParticipantResult.totalQuestions,
       );
 
-      // Broadcast the answer selection to all participants
-      this.server.to(testId).emit(ONLINE_TEST_EVENTS.SELECT_ANSWER, {
+      const responsePayload: ISelectAnswerResponse = {
         clientId: client.id,
         sectionId,
         taskId,
@@ -346,12 +457,13 @@ export class OnlineTestGateway
         totalQuestions: updatedParticipantResult.totalQuestions,
         percentage,
         metrics: updatedParticipantResult.metrics,
-      });
+      };
+
+      // Broadcast the answer selection to all participants
+      this.server.to(testId).emit(ONLINE_TEST_EVENTS.SELECT_ANSWER, responsePayload);
     } catch (error) {
       this.logger.error(`Error handling answer selection: ${error.message}`);
-      client.emit(ONLINE_TEST_EVENTS.ERROR, {
-        message: 'Failed to process answer selection',
-      });
+      client.emit(ONLINE_TEST_EVENTS.ERROR, { message: 'Failed to process answer selection' } as IErrorResponse);
     }
   }
 
@@ -394,17 +506,19 @@ export class OnlineTestGateway
     const participant = updatedParticipants.find((p: IParticipant) => p.clientId === client.id);
     const score = participant?.score;
 
-    client.broadcast.to(testId).emit(ONLINE_TEST_EVENTS.FINISH_ONLINE_TEST_AS_PARTICIPANT, {
+    const responsePayload: IFinishOnlineTestAsParticipantResponse = {
       testId,
       score,
-    });
+    };
+
+    client.broadcast.to(testId).emit(ONLINE_TEST_EVENTS.FINISH_ONLINE_TEST_AS_PARTICIPANT, responsePayload);
   }
 
   private async validateUser(client: Socket) {
     const token = client.handshake.auth.accessToken;
     const user = await this.jwtTokenService.verifyToken(token);
     if (!user) {
-      client.emit(ONLINE_TEST_EVENTS.ERROR, 'Invalid token');
+      client.emit(ONLINE_TEST_EVENTS.ERROR, { message: 'Invalid token' } as IErrorResponse);
       client.disconnect();
       return null;
     }
