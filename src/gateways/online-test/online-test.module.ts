@@ -12,6 +12,7 @@ import { OnlineTestRepository } from 'src/modules/online-test/online-test.reposi
 import { OnlineTestService } from 'src/modules/online-test/online-test.service';
 import { DocxService } from 'src/modules/test/services/docx/docx.service';
 import { PdfService } from 'src/modules/test/services/pdf/pdf.service';
+import { AnswerValidationService } from 'src/modules/online-test/services/answer-validation.service';
 @Module({
   providers: [
     OnlineTestService,
@@ -27,7 +28,8 @@ import { PdfService } from 'src/modules/test/services/pdf/pdf.service';
     TestRepository,
     OnlineTestRepository,
     DocxService,
-    PdfService
+    PdfService,
+    AnswerValidationService
   ],
   exports: [OnlineTestGateway],
 })

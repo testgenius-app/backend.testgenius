@@ -18,6 +18,11 @@ import {
   IParticipant,
   OnlineTestService,
 } from 'src/modules/online-test/online-test.service';
+import { AnswerValidationService } from 'src/modules/online-test/services/answer-validation.service';
+import {
+  IParticipantResult,
+  IOnlineTestResults,
+} from './types/online-test.types';
 @WebSocketGateway({
   namespace: 'online-test',
   transports: ['websocket'],
@@ -38,6 +43,7 @@ export class OnlineTestGateway
     private readonly testTempCodeService: TestTempCodeService,
     private readonly testService: TestService,
     private readonly onlineTestService: OnlineTestService,
+    private readonly answerValidationService: AnswerValidationService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -85,6 +91,7 @@ export class OnlineTestGateway
 
       const existingTest = await this.onlineTestService._getOnlineTestByTestId(
         tempCode.testId,
+        false, // Don't include answers for participants
       );
       if (
         !existingTest ||
@@ -94,6 +101,7 @@ export class OnlineTestGateway
         return;
 
       await this.onlineTestService._startOnlineTest(existingTest.id);
+      
       this.server
         .to(tempCode.testId)
         .emit(ONLINE_TEST_EVENTS.START_ONLINE_TEST, {
@@ -129,6 +137,7 @@ export class OnlineTestGateway
 
       const test = await this.onlineTestService._getOnlineTestByTestId(
         tempCode.testId,
+        false, // Don't include answers for participants
       );
       if (!test) return client.emit(ONLINE_TEST_EVENTS.ERROR, 'Test not found');
 
@@ -150,17 +159,20 @@ export class OnlineTestGateway
 
       const updated = await this.onlineTestService._getOnlineTestByTestId(
         tempCode.testId,
+        false, // Don't include answers for participants
       );
 
       client.emit(ONLINE_TEST_EVENTS.JOIN_ONLINE_TEST, {
         onlineUsers: JSON.parse(updated?.participants as string),
         testId: tempCode.testId,
+        test: updated?.test,
       });
       this.server
         .to(tempCode.testId)
         .emit(ONLINE_TEST_EVENTS.JOIN_ONLINE_TEST, {
           onlineUsers: JSON.parse(updated?.participants as string),
           testId: tempCode.testId,
+          test: updated?.test,
         });
     } catch (err) {
       this.logger.error(err);
@@ -182,6 +194,7 @@ export class OnlineTestGateway
     const updated =
       await this.onlineTestService._removeParticipantFromOnlineTest(test.id, {
         clientId: client.id,
+        status: 'completed',
       });
     client.emit(ONLINE_TEST_EVENTS.LEAVE_ONLINE_TEST, {
       onlineUsers: JSON.parse(updated?.participants as string),
@@ -247,9 +260,8 @@ export class OnlineTestGateway
     try {
       const { testId, sectionId, taskId, questionId, answer } = payload;
 
-      // Get the online test
-      const onlineTest =
-        await this.onlineTestService._getOnlineTestByTestId(testId);
+      // Get the online test with answers for validation
+      const onlineTest = await this.onlineTestService._getOnlineTestByTestId(testId, true);
       if (!onlineTest) {
         return client.emit(ONLINE_TEST_EVENTS.ERROR, {
           message: 'Test not found',
@@ -264,9 +276,7 @@ export class OnlineTestGateway
       }
 
       // Get the participant
-      const participants = JSON.parse(
-        onlineTest.participants as string,
-      ) as IParticipant[];
+      const participants = JSON.parse(onlineTest.participants as string) as IParticipant[];
       const participant = participants.find((p) => p.clientId === client.id);
       if (!participant) {
         return client.emit(ONLINE_TEST_EVENTS.ERROR, {
@@ -274,26 +284,55 @@ export class OnlineTestGateway
         });
       }
 
-      // Update the results
-      const results = onlineTest.results
+      // Get current results or initialize new ones
+      const currentResults: IOnlineTestResults = onlineTest.results
         ? JSON.parse(onlineTest.results as string)
-        : {};
-      if (!results[participant.clientId]) {
-        results[participant.clientId] = {};
-      }
-      if (!results[participant.clientId][sectionId]) {
-        results[participant.clientId][sectionId] = {};
-      }
-      if (!results[participant.clientId][sectionId][taskId]) {
-        results[participant.clientId][sectionId][taskId] = {};
-      }
+        : { results: {}, lastUpdated: new Date() };
 
-      results[participant.clientId][sectionId][taskId][questionId] = answer;
+      // Get or initialize participant result
+      const participantResult: IParticipantResult = currentResults.results[participant.clientId] || {
+        participantId: participant.clientId,
+        sections: {},
+        correctAnswersCount: 0,
+        totalQuestions: 0,
+        startedAt: new Date(),
+        lastInteractionAt: new Date(),
+        metrics: {
+          accuracy: 0,
+          averageTimePerQuestion: 0,
+          performanceTrend: {
+            questionIds: [],
+            correctness: [],
+          },
+          totalTimeSpent: 0,
+          incorrectAnswersCount: 0,
+        },
+      };
 
-      // Update the online test with new results
+      // Process the answer
+      const updatedParticipantResult = this.answerValidationService.processAnswer(
+        onlineTest.test as any,
+        participantResult,
+        sectionId,
+        taskId,
+        questionId,
+        answer,
+      );
+
+      // Update the results
+      currentResults.results[participant.clientId] = updatedParticipantResult;
+      currentResults.lastUpdated = new Date();
+
+      // Save the updated results
       await this.onlineTestService._updateOnlineTestResults(
         onlineTest.id,
-        results,
+        currentResults,
+      );
+
+      // Calculate percentage
+      const percentage = this.answerValidationService.calculatePercentage(
+        updatedParticipantResult.correctAnswersCount,
+        updatedParticipantResult.totalQuestions,
       );
 
       // Broadcast the answer selection to all participants
@@ -303,14 +342,64 @@ export class OnlineTestGateway
         taskId,
         questionId,
         answer,
+        correctAnswersCount: updatedParticipantResult.correctAnswersCount,
+        totalQuestions: updatedParticipantResult.totalQuestions,
+        percentage,
+        metrics: updatedParticipantResult.metrics,
       });
     } catch (error) {
-      this.logger.error(error);
+      this.logger.error(`Error handling answer selection: ${error.message}`);
       client.emit(ONLINE_TEST_EVENTS.ERROR, {
         message: 'Failed to process answer selection',
       });
     }
   }
+
+  @SubscribeMessage(ONLINE_TEST_EVENTS.FINISH_ONLINE_TEST_AS_PARTICIPANT)
+  async finishOnlineTestAsParticipant(client: Socket, { testId }: { testId: string }) {
+    const test = await this.onlineTestService._getOnlineTestByTestId(testId);
+    if (!test) return;
+
+    const results = JSON.parse(test.results as string);
+    const participants = JSON.parse(test.participants as string) as IParticipant[];
+
+    const updatedParticipants = participants.map((p: IParticipant) => {
+      if (p.clientId === client.id) {
+        const participantResults = results[p.clientId];
+        if (participantResults) {
+          const totalScore = participantResults.correctAnswersCount;
+          const totalQuestions = participantResults.totalQuestions;
+          const percentage = (totalScore / totalQuestions) * 100;
+
+          const updatedParticipant: IParticipant = {
+            ...p,
+            status: 'waiting_results',
+            score: {
+              totalScore,
+              totalQuestions,
+              percentage: Math.round(percentage * 100) / 100, // Round to 2 decimal places
+            },
+          };
+          return updatedParticipant;
+        }
+      }
+      return p;
+    });
+
+    await this.onlineTestService._updateOnlineTest(test.id, {
+      participants: JSON.stringify(updatedParticipants),
+    });
+
+    // Get the participant's score
+    const participant = updatedParticipants.find((p: IParticipant) => p.clientId === client.id);
+    const score = participant?.score;
+
+    client.broadcast.to(testId).emit(ONLINE_TEST_EVENTS.FINISH_ONLINE_TEST_AS_PARTICIPANT, {
+      testId,
+      score,
+    });
+  }
+
   private async validateUser(client: Socket) {
     const token = client.handshake.auth.accessToken;
     const user = await this.jwtTokenService.verifyToken(token);

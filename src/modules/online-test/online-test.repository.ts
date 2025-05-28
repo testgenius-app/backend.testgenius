@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateOnlineTestDto } from './dto/create-online-test.dto';
-import { OnlineTest } from '@prisma/client';
+import { OnlineTest, Prisma } from '@prisma/client';
 import { IParticipant } from './online-test.service';
 const include = {
   sections: {
@@ -100,6 +100,16 @@ export class OnlineTestRepository implements OnModuleInit {
       where: { id: onlineTestId },
     });
     return onlineTest;
+  }
+
+  async updateOnlineTest(
+    onlineTestId: string,
+    data: Prisma.OnlineTestUpdateInput,
+  ): Promise<OnlineTest> {
+    return this.prisma.onlineTest.update({
+      where: { id: onlineTestId },
+      data,
+    });
   }
 
   async updateOnlineTestResults(

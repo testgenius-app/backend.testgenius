@@ -9,5 +9,6 @@ export const ONLINE_TEST_EVENTS = {
   LEAVE_ONLINE_TEST: 'leave:online:test',
   SELECT_ANSWER: 'select:test:answer',
   CHANGE_USER_DATA: 'change:user:data',
+  FINISH_ONLINE_TEST_AS_PARTICIPANT: 'finish:online:test:as:participant',
   ERROR: 'error',
 };
