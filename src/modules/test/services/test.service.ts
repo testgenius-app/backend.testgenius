@@ -6,6 +6,7 @@ import {
 import { Response } from 'express';
 import * as fs from 'fs/promises';
 import { CreateTestDto } from '../dto/create-test.dto';
+import { UpdateTestDto } from '../dto/update-test.dto';
 import { IUser } from 'src/core/types/iuser.type';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { TestRepository } from '../test.repository';
@@ -23,6 +24,13 @@ enum FileType {
 interface FileTypeConfig {
   contentType: string;
   generator: (test: any) => Promise<{ zipFilePath: string }>;
+}
+
+export interface IPagination {
+  page: number;
+  pages: number;
+  limit: number;
+  total: number;
 }
 
 @Injectable()
@@ -62,8 +70,16 @@ export class TestService {
   public async getTestsByOwnerId(
     user: IUser,
     filterDto: FilterDto,
-  ): Promise<{ tests: Test[]; count: number }> {
-    return this.testRepository.getTestsByOwnerId(user.id, filterDto);
+  ): Promise<{ tests: Test[]; pagination: IPagination }> {
+    const { tests, count } = await this.testRepository.getTestsByOwnerId(user.id, filterDto);
+    const pages = Math.ceil(count / filterDto.limit);
+    const pagination: IPagination = {
+      page: filterDto.page,
+      pages,
+      limit: filterDto.limit,
+      total: count,
+    };
+    return { tests, pagination };
   }
 
   public async downloadTest(
@@ -136,5 +152,23 @@ export class TestService {
       throw new UnauthorizedException('User not found');
     }
     return validUser;
+  }
+
+  public async updateTest(
+    id: string,
+    user: IUser,
+    data: UpdateTestDto,
+  ): Promise<Test> {
+    await this.validateUser(user);
+    const test = await this.testRepository.getTestById(id);
+    this.validateTestOwnership(test, user);
+    return this.testRepository.updateTest(id, data);
+  }
+
+  public async deleteTest(id: string, user: IUser): Promise<Test> {
+    await this.validateUser(user);
+    const test = await this.testRepository.getTestById(id);
+    this.validateTestOwnership(test, user);
+    return this.testRepository.deleteTest(id);
   }
 }

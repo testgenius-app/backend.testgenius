@@ -1,8 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
+  Put,
   Query,
   Res,
   UseGuards,
@@ -13,14 +16,16 @@ import {
   ApiOperation,
   ApiResponse,
   ApiQuery,
+  ApiParam,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/auth.guard';
-import { TestService } from './services/test.service';
+import { IPagination, TestService } from './services/test.service';
 import { FilterDto } from './dto/filter.dto';
 import { IUser } from 'src/core/types/iuser.type';
 import { User } from 'src/common/decorators/user.decorator';
 import { Test } from '@prisma/client';
 import { CreateTestDto } from './dto/create-test.dto';
+import { UpdateTestDto } from './dto/update-test.dto';
 import { DownloadDto } from './dto/download.dto';
 import { Response } from 'express';
 
@@ -45,7 +50,7 @@ export class TestController {
   async getTestsByOwnerId(
     @User() user: IUser,
     @Query() filterDto: FilterDto,
-  ): Promise<{ tests: Test[]; count: number }> {
+  ): Promise<{ tests: Test[]; pagination: IPagination }> {
     return this.testService.getTestsByOwnerId(user, filterDto);
   }
 
@@ -93,5 +98,38 @@ export class TestController {
     @Res() res: Response,
   ): Promise<any> {
     return this.testService.downloadTest(user, query, res);
+  }
+
+  @Put(':id')
+  @ApiOperation({
+    summary: 'Update test',
+    description: 'Updates an existing test by its ID',
+  })
+  @ApiParam({ name: 'id', description: 'ID of the test to update' })
+  @ApiResponse({ status: 200, description: 'Test updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Test not found' })
+  async updateTest(
+    @User() user: IUser,
+    @Param('id') id: string,
+    @Body() body: UpdateTestDto,
+  ): Promise<Test> {
+    return this.testService.updateTest(id, user, body);
+  }
+
+  @Delete(':id')
+  @ApiOperation({
+    summary: 'Delete test',
+    description: 'Deletes a test by its ID',
+  })
+  @ApiParam({ name: 'id', description: 'ID of the test to delete' })
+  @ApiResponse({ status: 200, description: 'Test deleted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Test not found' })
+  async deleteTest(
+    @User() user: IUser,
+    @Param('id') id: string,
+  ): Promise<Test> {
+    return this.testService.deleteTest(id, user);
   }
 }

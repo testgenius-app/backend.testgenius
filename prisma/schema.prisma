@@ -22,6 +22,8 @@ model User {
   isVerified     Boolean  @default(false) @map("is_verified")
   provider       Providers @default(EMAIL)
   tests          Test[]
+  actorActivities Activity[] @relation("ActorActivities")
+  targetActivities Activity[] @relation("TargetActivities")
   @@map("users")
 }
 
@@ -74,7 +76,7 @@ model Test {
   description   String
   tags          String[]
   sectionCount  Int       @map("section_count")
-  isPublic      Boolean   @default(false) @map("is_public")
+  isPublic      Boolean   @default(false) @map("is_public") 
   sections      Section[]
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
@@ -150,6 +152,7 @@ model Question {
 
   @@map("questions")
 }
+
 model TestTempCode {
   id         String    @id @default(uuid()) @map("test_temp_code_id")
   code       Int       @unique
@@ -176,4 +179,49 @@ model OnlineTest {
   participants Json? 
   results Json? 
   @@map("online_tests")
+}
+
+enum EntityType {
+  TEST
+  ONLINE_TEST
+  SECTION
+  TASK
+  QUESTION
+  USER
+}
+
+enum ActionType {
+  CREATE
+  UPDATE
+  DELETE
+  START
+  COMPLETE
+  SHARE
+  JOIN
+  LEAVE
+}
+
+model Activity {
+  id          String      @id @default(uuid()) @map("activity_id")
+  entityType  EntityType
+  actionType  ActionType
+  entityId    String      @map("entity_id")
+  description String
+  metadata    Json?
+  
+  actor       User        @relation("ActorActivities", fields: [actorId], references: [id], onDelete: Cascade)
+  actorId     String      @map("actor_id")
+  
+  target      User?       @relation("TargetActivities", fields: [targetId], references: [id], onDelete: Cascade)
+  targetId    String?     @map("target_id")
+  
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  @@index([entityType])
+  @@index([actionType])
+  @@index([entityId])
+  @@index([actorId])
+  @@index([targetId])
+  @@index([createdAt])
+  @@map("activities")
 }
