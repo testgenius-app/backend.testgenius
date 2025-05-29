@@ -9,6 +9,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { DocxService } from 'src/modules/test/services/docx/docx.service';
 import { PdfService } from 'src/modules/test/services/pdf/pdf.service';
+import { ActivityService } from 'src/modules/activity/activity.service';
+import { ActivityRepository } from 'src/modules/activity/activity.repository';
 
 @Module({
   providers: [
@@ -23,7 +25,8 @@ import { PdfService } from 'src/modules/test/services/pdf/pdf.service';
     ConfigService,
     DocxService,
     PdfService,
-    
+    ActivityService,
+    ActivityRepository
   ],
   exports: [GenerateTestService, GenerateTestGateway],
 })

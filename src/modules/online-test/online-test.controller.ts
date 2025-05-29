@@ -3,7 +3,7 @@ import { OnlineTestService } from './online-test.service';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/auth.guard';
 
-@ApiTags('Online Test')
+@ApiTags('Online Tests')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('access-token')
 @Controller({ path: 'online-test', version: '1' })

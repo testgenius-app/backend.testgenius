@@ -54,7 +54,10 @@ export class AnalyticsService {
   }
 
   private async getCreatedTestsStats(start: Date, end: Date) {
-    const { start: prevStart, end: prevEnd } = this.getPreviousPeriod(start, end);
+    const { start: prevStart, end: prevEnd } = this.getPreviousPeriod(
+      start,
+      end,
+    );
 
     const [currentPeriodCount, previousPeriodCount] = await Promise.all([
       this.prisma.test.count({
@@ -88,7 +91,10 @@ export class AnalyticsService {
   }
 
   private async getParticipantsStats(start: Date, end: Date) {
-    const { start: prevStart, end: prevEnd } = this.getPreviousPeriod(start, end);
+    const { start: prevStart, end: prevEnd } = this.getPreviousPeriod(
+      start,
+      end,
+    );
 
     const [currentPeriodCount, previousPeriodCount] = await Promise.all([
       this.prisma.onlineTest.count({
@@ -122,7 +128,10 @@ export class AnalyticsService {
   }
 
   private async getCompletionRateStats(start: Date, end: Date) {
-    const { start: prevStart, end: prevEnd } = this.getPreviousPeriod(start, end);
+    const { start: prevStart, end: prevEnd } = this.getPreviousPeriod(
+      start,
+      end,
+    );
 
     const [currentPeriodStats, previousPeriodStats] = await Promise.all([
       this.prisma.onlineTest.findMany({
@@ -149,15 +158,25 @@ export class AnalyticsService {
       }),
     ]);
 
-    const currentCompleted = currentPeriodStats.filter((test) => test.finishedAt).length;
+    const currentCompleted = currentPeriodStats.filter(
+      (test) => test.finishedAt,
+    ).length;
     const currentTotal = currentPeriodStats.length;
-    const previousCompleted = previousPeriodStats.filter((test) => test.finishedAt).length;
+    const previousCompleted = previousPeriodStats.filter(
+      (test) => test.finishedAt,
+    ).length;
     const previousTotal = previousPeriodStats.length;
 
-    const currentPercentage = currentTotal ? Math.round((currentCompleted / currentTotal) * 100) : 0;
-    const previousPercentage = previousTotal ? Math.round((previousCompleted / previousTotal) * 100) : 0;
+    const currentPercentage = currentTotal
+      ? Math.round((currentCompleted / currentTotal) * 100)
+      : 0;
+    const previousPercentage = previousTotal
+      ? Math.round((previousCompleted / previousTotal) * 100)
+      : 0;
 
-    const percentageChange = previousPercentage ? currentPercentage - previousPercentage : 0;
+    const percentageChange = previousPercentage
+      ? currentPercentage - previousPercentage
+      : 0;
 
     return {
       currentPercentage,
@@ -168,15 +187,17 @@ export class AnalyticsService {
 
   private parseResults(results: Prisma.JsonValue): TestResults | null {
     if (!results) return null;
-    
+
     try {
-      const parsed = typeof results === 'string' ? JSON.parse(results) : results;
+      const parsed =
+        typeof results === 'string' ? JSON.parse(results) : results;
       if (!parsed || typeof parsed !== 'object') return null;
-      
+
       // Validate the structure
       if (!('results' in parsed) || !('lastUpdated' in parsed)) return null;
-      if (typeof parsed.results !== 'object' || parsed.results === null) return null;
-      
+      if (typeof parsed.results !== 'object' || parsed.results === null)
+        return null;
+
       return parsed as TestResults;
     } catch {
       return null;
@@ -189,7 +210,10 @@ export class AnalyticsService {
   }
 
   private async getAverageScoreStats(start: Date, end: Date) {
-    const { start: prevStart, end: prevEnd } = this.getPreviousPeriod(start, end);
+    const { start: prevStart, end: prevEnd } = this.getPreviousPeriod(
+      start,
+      end,
+    );
 
     const [currentPeriodTests, previousPeriodTests] = await Promise.all([
       this.prisma.onlineTest.findMany({
@@ -228,18 +252,23 @@ export class AnalyticsService {
             .filter((score): score is number => score !== null);
 
           return participantScores.length > 0
-            ? participantScores.reduce((a, b) => a + b, 0) / participantScores.length
+            ? participantScores.reduce((a, b) => a + b, 0) /
+                participantScores.length
             : null;
         })
         .filter((score): score is number => score !== null);
 
-      return scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+      return scores.length
+        ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+        : 0;
     };
 
     const currentAverage = calculateAverage(currentPeriodTests);
     const previousAverage = calculateAverage(previousPeriodTests);
 
-    const percentageChange = previousAverage ? currentAverage - previousAverage : 0;
+    const percentageChange = previousAverage
+      ? currentAverage - previousAverage
+      : 0;
 
     return {
       currentPercentage: currentAverage,
@@ -330,7 +359,8 @@ export class AnalyticsService {
             .filter((score): score is number => score !== null);
 
           return participantScores.length > 0
-            ? participantScores.reduce((a, b) => a + b, 0) / participantScores.length
+            ? participantScores.reduce((a, b) => a + b, 0) /
+                participantScores.length
             : null;
         })
         .filter((score): score is number => score !== null);
@@ -350,6 +380,50 @@ export class AnalyticsService {
     });
   }
 
+  private async getTotalTests() {
+    return this.prisma.test.count();
+  }
+
+  private async getTestsCreatedThisMonth() {
+    const now = new Date();
+    const start = startOfMonth(now);
+    const end = endOfMonth(now);
+    return this.prisma.test.count({
+      where: {
+        createdAt: {
+          gte: start,
+          lte: end,
+        },
+      },
+    });
+  }
+
+  private async getActiveUsersLast30Days() {
+    const now = new Date();
+    const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    return this.prisma.user.count({
+      where: {
+        lastActiveDate: {
+          gte: last30Days,
+        },
+      },
+    });
+  }
+
+  private async getOnlineTestsCreatedThisMonth() {
+    const now = new Date();
+    const start = startOfMonth(now);
+    const end = endOfMonth(now);
+    return this.prisma.onlineTest.count({
+      where: {
+        createdAt: {
+          gte: start,
+          lte: end,
+        },
+      },
+    });
+  }
+
   async getDashboardStats(dto: DashboardStatsDto) {
     const { start, end } = this.getDateRange(dto.startDate, dto.endDate);
 
@@ -360,6 +434,10 @@ export class AnalyticsService {
       averageScore,
       testActivity,
       latestTests,
+      totalTests,
+      testsCreatedThisMonth,
+      activeUsersLast30Days,
+      onlineTestsCreatedThisMonth,
     ] = await Promise.all([
       this.getCreatedTestsStats(start, end),
       this.getParticipantsStats(start, end),
@@ -367,6 +445,10 @@ export class AnalyticsService {
       this.getAverageScoreStats(start, end),
       this.getTestActivityData(start, end),
       this.getLatestTests(dto.limitLatestTests || 5),
+      this.getTotalTests(),
+      this.getTestsCreatedThisMonth(),
+      this.getActiveUsersLast30Days(),
+      this.getOnlineTestsCreatedThisMonth(),
     ]);
 
     return {
@@ -382,6 +464,10 @@ export class AnalyticsService {
       },
       testActivity,
       latestTests,
+      totalTests,
+      testsCreatedThisMonth,
+      activeUsersLast30Days,
+      onlineTestsCreatedThisMonth,
     };
   }
 } 

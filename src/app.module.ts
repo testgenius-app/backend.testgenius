@@ -12,6 +12,7 @@ import { OnlineTestGatewayModule } from './gateways/online-test/online-test.modu
 import { OnlineTestModule } from './modules/online-test/online-test.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { ActivityModule } from './modules/activity/activity.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     OnlineTestModule,
     SchedulerModule,
     AnalyticsModule,
+    ActivityModule,
   ],
 })
 export class AppModule {}

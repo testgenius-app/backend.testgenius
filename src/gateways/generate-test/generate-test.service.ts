@@ -206,7 +206,7 @@ Return a valid JSON following this structure:
           model: this.model,
           contents: [prompt],
         });
-
+        console.log(response.text);
         try {
           const jsonStr = response.text.includes('```json') 
             ? response.text.split('```json')[1].split('```')[0].trim()

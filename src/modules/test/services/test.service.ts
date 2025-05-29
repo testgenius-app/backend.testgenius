@@ -15,6 +15,12 @@ import { DownloadDto } from '../dto/download.dto';
 import { DocxService } from './docx/docx.service';
 import { PdfService } from './pdf/pdf.service';
 import { Test, User } from '@prisma/client';
+import { ActivityService } from 'src/modules/activity/activity.service';
+import { EntityType, ActionType } from '@prisma/client';
+import {
+  ActivityTranslations,
+  ActivityMetadata,
+} from 'src/modules/activity/interfaces/activity-translations.interface';
 
 enum FileType {
   DOCX = 'docx',
@@ -42,6 +48,7 @@ export class TestService {
     private readonly testRepository: TestRepository,
     private readonly docxService: DocxService,
     private readonly pdfService: PdfService,
+    private readonly activityService: ActivityService,
   ) {
     this.fileTypeHandlers = {
       [FileType.DOCX]: {
@@ -56,9 +63,59 @@ export class TestService {
     };
   }
 
+  private getActivityDescription(
+    actionType: ActionType,
+    title: string,
+  ): ActivityTranslations {
+    const descriptions = {
+      [ActionType.CREATE]: {
+        uz: `Yangi test yaratildi: "${title}"`,
+        ru: `Создан новый тест: "${title}"`,
+        en: `Created new test: "${title}"`,
+      },
+      [ActionType.UPDATE]: {
+        uz: `Test yangilandi: "${title}"`,
+        ru: `Тест обновлен: "${title}"`,
+        en: `Updated test: "${title}"`,
+      },
+      [ActionType.DELETE]: {
+        uz: `Test o'chirildi: "${title}"`,
+        ru: `Тест удален: "${title}"`,
+        en: `Deleted test: "${title}"`,
+      },
+    };
+
+    return descriptions[actionType];
+  }
+
   public async create(user: IUser, body: CreateTestDto): Promise<any> {
     await this.validateUser(user);
-    return this.testRepository.createTest(body, user);
+    const test = await this.testRepository.createTest(body, user);
+
+    // Log activity with translations
+    await this.activityService.logActivity({
+      entityType: EntityType.TEST,
+      actionType: ActionType.CREATE,
+      entityId: test.id,
+      description: this.getActivityDescription(ActionType.CREATE, test.title),
+      actorId: user.id,
+      metadata: {
+        title: {
+          uz: test.title,
+          ru: test.title,
+          en: test.title,
+        },
+        subject: {
+          uz: test.subject,
+          ru: test.subject,
+          en: test.subject,
+        },
+        gradeLevel: test.gradeLevel,
+        sectionCount: test.sectionCount,
+      },
+    });
+
+    return test;
   }
 
   public async getTestById(id: string, user: IUser): Promise<any> {
@@ -71,7 +128,10 @@ export class TestService {
     user: IUser,
     filterDto: FilterDto,
   ): Promise<{ tests: Test[]; pagination: IPagination }> {
-    const { tests, count } = await this.testRepository.getTestsByOwnerId(user.id, filterDto);
+    const { tests, count } = await this.testRepository.getTestsByOwnerId(
+      user.id,
+      filterDto,
+    );
     const pages = Math.ceil(count / filterDto.limit);
     const pagination: IPagination = {
       page: filterDto.page,
@@ -162,13 +222,63 @@ export class TestService {
     await this.validateUser(user);
     const test = await this.testRepository.getTestById(id);
     this.validateTestOwnership(test, user);
-    return this.testRepository.updateTest(id, data);
+    const updatedTest = await this.testRepository.updateTest(id, data);
+
+    // Log activity with translations
+    await this.activityService.logActivity({
+      entityType: EntityType.TEST,
+      actionType: ActionType.UPDATE,
+      entityId: test.id,
+      description: this.getActivityDescription(ActionType.UPDATE, test.title),
+      actorId: user.id,
+      metadata: {
+        title: {
+          uz: updatedTest.title,
+          ru: updatedTest.title,
+          en: updatedTest.title,
+        },
+        subject: {
+          uz: updatedTest.subject,
+          ru: updatedTest.subject,
+          en: updatedTest.subject,
+        },
+        gradeLevel: updatedTest.gradeLevel,
+        sectionCount: updatedTest.sectionCount,
+        changes: Object.keys(data),
+      },
+    });
+
+    return updatedTest;
   }
 
   public async deleteTest(id: string, user: IUser): Promise<Test> {
     await this.validateUser(user);
     const test = await this.testRepository.getTestById(id);
     this.validateTestOwnership(test, user);
+
+    // Log activity with translations
+    await this.activityService.logActivity({
+      entityType: EntityType.TEST,
+      actionType: ActionType.DELETE,
+      entityId: test.id,
+      description: this.getActivityDescription(ActionType.DELETE, test.title),
+      actorId: user.id,
+      metadata: {
+        title: {
+          uz: test.title,
+          ru: test.title,
+          en: test.title,
+        },
+        subject: {
+          uz: test.subject,
+          ru: test.subject,
+          en: test.subject,
+        },
+        gradeLevel: test.gradeLevel,
+        sectionCount: test.sectionCount,
+      },
+    });
+
     return this.testRepository.deleteTest(id);
   }
 }

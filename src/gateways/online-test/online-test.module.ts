@@ -13,6 +13,8 @@ import { OnlineTestService } from 'src/modules/online-test/online-test.service';
 import { DocxService } from 'src/modules/test/services/docx/docx.service';
 import { PdfService } from 'src/modules/test/services/pdf/pdf.service';
 import { AnswerValidationService } from 'src/modules/online-test/services/answer-validation.service';
+import { ActivityService } from 'src/modules/activity/activity.service';
+import { ActivityRepository } from 'src/modules/activity/activity.repository';
 @Module({
   providers: [
     OnlineTestService,
@@ -29,7 +31,9 @@ import { AnswerValidationService } from 'src/modules/online-test/services/answer
     OnlineTestRepository,
     DocxService,
     PdfService,
-    AnswerValidationService
+    AnswerValidationService,
+    ActivityService,
+    ActivityRepository
   ],
   exports: [OnlineTestGateway],
 })

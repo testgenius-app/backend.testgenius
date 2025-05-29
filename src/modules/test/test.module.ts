@@ -7,6 +7,7 @@ import { JwtModule, JwtService } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DocxService } from './services/docx/docx.service';
 import { PdfService } from './services/pdf/pdf.service';
+import { ActivityModule } from '../activity/activity.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { PdfService } from './services/pdf/pdf.service';
       }),
       inject: [ConfigService],
     }),
+    ActivityModule,
   ],
   controllers: [TestController],
   providers: [
@@ -31,8 +33,7 @@ import { PdfService } from './services/pdf/pdf.service';
     JwtService,
     DocxService,
     PdfService,
-    
   ],
-  exports: [TestService, TestRepository, ],
+  exports: [TestService, TestRepository],
 })
 export class TestModule {}

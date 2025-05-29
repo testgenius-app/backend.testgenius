@@ -202,26 +202,20 @@ enum ActionType {
 }
 
 model Activity {
-  id          String      @id @default(uuid()) @map("activity_id")
+  id          String      @id @default(uuid())
   entityType  EntityType
   actionType  ActionType
-  entityId    String      @map("entity_id")
-  description String
-  metadata    Json?
-  
+  entityId    String
+  description Json        // Changed from String to Json to store translations
+  actorId     String
   actor       User        @relation("ActorActivities", fields: [actorId], references: [id], onDelete: Cascade)
-  actorId     String      @map("actor_id")
-  
+  targetId    String?
   target      User?       @relation("TargetActivities", fields: [targetId], references: [id], onDelete: Cascade)
-  targetId    String?     @map("target_id")
-  
-  createdAt   DateTime    @default(now()) @map("created_at")
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
-  @@index([entityType])
-  @@index([actionType])
-  @@index([entityId])
+  @@index([entityType, entityId])
   @@index([actorId])
   @@index([targetId])
-  @@index([createdAt])
-  @@map("activities")
 }
