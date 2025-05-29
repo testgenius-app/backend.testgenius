@@ -2,6 +2,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
+export enum Order {
+  ASC = 'asc',
+  DESC = 'desc',
+}
+
 export class FilterDto {
   @ApiProperty({
     description: 'Page number',

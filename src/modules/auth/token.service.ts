@@ -39,7 +39,6 @@ export class TokenService {
   }
 
   async generateTokens(userId: string): Promise<ITokens> {
-    console.log(userId);
     const accessToken = await this.createAccessToken(userId);
     const refreshToken = await this.createRefreshToken(userId);
     return { accessToken, refreshToken };

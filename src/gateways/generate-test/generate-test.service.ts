@@ -264,7 +264,6 @@ Confirm your understanding by responding with: { "understood": true }`;
           : response.text.trim();
         
         const result = JSON.parse(jsonStr);
-        console.log(result);
         return this.logger.log(`${result.understood ? 'AI Model initialized successfully' : 'AI Model initialization failed'}`);
       } catch (error) {
         this.logger.error('Generated content is not valid JSON');

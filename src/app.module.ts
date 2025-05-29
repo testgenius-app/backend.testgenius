@@ -11,6 +11,7 @@ import { TestTempCodeModule } from './modules/test-temp-code/test-temp-code.modu
 import { OnlineTestGatewayModule } from './gateways/online-test/online-test.module';
 import { OnlineTestModule } from './modules/online-test/online-test.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { SchedulerModule } from './modules/scheduler/scheduler.module';
     OnlineTestGatewayModule,
     OnlineTestModule,
     SchedulerModule,
+    AnalyticsModule,
   ],
 })
 export class AppModule {}

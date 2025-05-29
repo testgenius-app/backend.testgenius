@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OnlineTest } from '@prisma/client';
-import { OnlineTestRepository } from './online-test.repository';
+import { OnlineTestRepository, IOnlineTestListResponse } from './online-test.repository';
 import { CreateOnlineTestDto } from './dto/create-online-test.dto';
 import { IParticipantScore } from '../../gateways/online-test/types/online-test.types';
 
@@ -121,5 +121,9 @@ export class OnlineTestService {
       onlineTestId,
       participant,
     );
+  }
+
+  async _getAllOnlineTests(): Promise<IOnlineTestListResponse[]> {
+    return this.onlineTestRepository.getAllOnlineTests();
   }
 }

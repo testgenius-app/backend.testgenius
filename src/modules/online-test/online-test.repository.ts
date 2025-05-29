@@ -3,6 +3,25 @@ import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateOnlineTestDto } from './dto/create-online-test.dto';
 import { OnlineTest, Prisma } from '@prisma/client';
 import { IParticipant } from './online-test.service';
+
+export interface IOnlineTestListResponse {
+  id: string;
+  testId: string;
+  tempCodeId: string;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  participants: Prisma.JsonValue;
+  createdAt: Date;
+  updatedAt: Date;
+  test: {
+    id: string;
+    title: string;
+    description: string;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+}
+
 const include = {
   sections: {
     include: {
@@ -187,6 +206,30 @@ export class OnlineTestRepository implements OnModuleInit {
     return this.prisma.onlineTest.update({
       where: { id: onlineTestId },
       data: { participants: JSON.stringify(participants) },
+    });
+  }
+
+  async getAllOnlineTests(): Promise<IOnlineTestListResponse[]> {
+    return this.prisma.onlineTest.findMany({
+      select: {
+        id: true,
+        testId: true,
+        tempCodeId: true,
+        startedAt: true,
+        finishedAt: true,
+        participants: true,
+        createdAt: true,
+        updatedAt: true,
+        test: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
     });
   }
 }
