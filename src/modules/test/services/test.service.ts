@@ -71,7 +71,6 @@ export class TestService {
     query: DownloadDto,
     res: Response,
   ): Promise<void> {
-    console.log('user downloaded test')
     const { testId, type } = query;
     const test = await this.testRepository.getTestById(testId);
     this.validateTestOwnership(test, user);
