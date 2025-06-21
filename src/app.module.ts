@@ -15,6 +15,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { CoinModule } from './modules/coin/coin.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { StripeModule } from './modules/stripe/stripe.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { NotificationModule } from './modules/notification/notification.module';
     ActivityModule,
     CoinModule,
     NotificationModule,
+    StripeModule,
   ],
 })
 export class AppModule {}

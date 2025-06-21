@@ -25,6 +25,7 @@ model User {
   actorActivities Activity[] @relation("ActorActivities")
   targetActivities Activity[] @relation("TargetActivities")
   notifications Notification[]
+  paymentTransactions PaymentTransaction[]
   @@map("users")
 }
 
@@ -65,7 +66,8 @@ model Pack {
   disadvantages   String[]
   isDaily         Boolean  @default(false) @map("is_daily")
   isFree          Boolean  @default(false) @map("is_free")
-
+  price           Int      @default(0) @map("price_in_cents")
+  paymentTransactions PaymentTransaction[]
   @@map("packs")
 }
 
@@ -229,11 +231,41 @@ model Notification {
   title     String
   message   String
   isRead    Boolean  @default(false)
-  data      Json?    // optional, qo‘shimcha ma’lumotlar uchun
+  data      Json?    // optional, qo'shimcha ma'lumotlar uchun
   channel   String?  // optional, 'web', 'email', 'push'
   priority  String?  // optional, 'low', 'normal', 'high'
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("notifications")
+}
+
+model PaymentTransaction {
+  id                    String   @id @default(uuid()) @map("payment_transaction_id")
+  userId                String   @map("user_id")
+  packId                String   @map("pack_id")
+  paymentIntentId       String   @unique @map("payment_intent_id")
+  stripePaymentIntentId String   @unique @map("stripe_payment_intent_id")
+  amount                Int      // Amount in cents
+  currency              String   @default("usd")
+  status                PaymentStatus @default(PENDING)
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pack                  Pack     @relation(fields: [packId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([packId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("payment_transactions")
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REFUNDED
 }

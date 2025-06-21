@@ -3,10 +3,17 @@ import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
+import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+
+  // Configure raw body for Stripe webhooks
+  app.use(
+    '/v1/stripe/webhook',
+    express.raw({ type: 'application/json' })
+  );
 
   // Configurating app
   app.enableCors({ origin: '*' });
