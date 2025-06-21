@@ -13,6 +13,8 @@ import { OnlineTestModule } from './modules/online-test/online-test.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { ActivityModule } from './modules/activity/activity.module';
+import { CoinModule } from './modules/coin/coin.module';
+import { NotificationModule } from './modules/notification/notification.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { ActivityModule } from './modules/activity/activity.module';
     SchedulerModule,
     AnalyticsModule,
     ActivityModule,
+    CoinModule,
+    NotificationModule,
   ],
 })
 export class AppModule {}

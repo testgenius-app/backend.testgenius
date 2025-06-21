@@ -83,7 +83,7 @@ Return a valid JSON following this structure:
     }
   ]
 }`;
-
+    console.log(prompt);
     const response = await this.ai.models.generateContent({
       model: this.model,
       contents: [prompt],
@@ -117,6 +117,7 @@ Return a valid JSON following this structure:
         tags = [subject, `grade-${gradeLevel}`, 'assessment'],
         sectionCount = 1,
         topic = 'random',
+        prompt: userPrompt = '',
       } = testParams;
 
       const totalQuestions = questionsPerSection * sectionCount;
@@ -131,6 +132,7 @@ Return a valid JSON following this structure:
         description,
         tags,
         sectionCount,
+        prompt: userPrompt,
         sections: []
       };
 
@@ -145,7 +147,8 @@ Create a test with these parameters:
 - Questions per section: ${questionsPerSection}
 - Sections: ${sectionCount}
 - Topic: ${topic}
-- Language: Uzbek
+- Language: Uzbek or if user prompt is not empty, use user prompt
+- Prompt: ${userPrompt}
 
 Rules:
 1. Multiple choice options must not include letter prefixes (e.g., "Paris", not "A. Paris")
@@ -201,7 +204,6 @@ Return a valid JSON following this structure:
     }
   ]
 }`;
-
         const response = await this.ai.models.generateContent({
           model: this.model,
           contents: [prompt],

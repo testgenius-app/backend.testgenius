@@ -8,4 +8,5 @@ export class TestParamsDto {
   tags?: string[];
   sectionCount?: number;
   topic?: string;
+  prompt?: string;
 }

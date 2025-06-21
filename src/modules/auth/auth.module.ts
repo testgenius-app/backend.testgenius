@@ -10,6 +10,9 @@ import { PrismaService } from 'src/common/prisma/prisma.service';
 import { UtilsService } from 'src/core/utils/utils.service';
 import { GoogleModule } from './google/google.module';
 import { MailService } from 'src/core/mail/mail.service';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationRepository } from '../notification/notification.repository';
+import { CoinService } from '../coin/coin.service';
 
 @Module({
   imports: [
@@ -36,6 +39,9 @@ import { MailService } from 'src/core/mail/mail.service';
     TokenService,
     UtilsService,
     MailService,
+    NotificationService,
+    NotificationRepository,
+    CoinService,
   ],
 })
 export class AuthModule {}

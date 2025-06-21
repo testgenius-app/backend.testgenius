@@ -24,6 +24,7 @@ model User {
   tests          Test[]
   actorActivities Activity[] @relation("ActorActivities")
   targetActivities Activity[] @relation("TargetActivities")
+  notifications Notification[]
   @@map("users")
 }
 
@@ -218,4 +219,21 @@ model Activity {
   @@index([entityType, entityId])
   @@index([actorId])
   @@index([targetId])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // 'info', 'success', 'warning', 'error', 'system', ...
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  data      Json?    // optional, qo‘shimcha ma’lumotlar uchun
+  channel   String?  // optional, 'web', 'email', 'push'
+  priority  String?  // optional, 'low', 'normal', 'high'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notifications")
 }
