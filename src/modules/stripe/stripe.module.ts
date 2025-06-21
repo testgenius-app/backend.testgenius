@@ -25,4 +25,5 @@ import { JwtService } from '@nestjs/jwt';
   ],
   exports: [StripeService],
 })
+
 export class StripeModule {} 
