@@ -24,4 +24,4 @@ RUN yarn build
 EXPOSE 4000
 
 # Start the application
-CMD ["yarn", "start:prod"] 
+CMD ["yarn", "prod"] 
