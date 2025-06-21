@@ -8,6 +8,7 @@ import { NotificationService } from '../notification/notification.service';
 import { NotificationRepository } from '../notification/notification.repository';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityRepository } from '../activity/activity.repository';
+import { JwtService } from '@nestjs/jwt';
 
 @Module({
   imports: [ConfigModule],
@@ -20,7 +21,9 @@ import { ActivityRepository } from '../activity/activity.repository';
     NotificationRepository,
     ActivityService,
     ActivityRepository,
+    JwtService
   ],
   exports: [StripeService],
 })
+
 export class StripeModule {} 
