@@ -11,6 +11,9 @@ import { DocxService } from 'src/modules/test/services/docx/docx.service';
 import { PdfService } from 'src/modules/test/services/pdf/pdf.service';
 import { ActivityService } from 'src/modules/activity/activity.service';
 import { ActivityRepository } from 'src/modules/activity/activity.repository';
+import { CoinService } from 'src/modules/coin/coin.service';
+import { NotificationService } from 'src/modules/notification/notification.service';
+import { NotificationRepository } from 'src/modules/notification/notification.repository';
 
 @Module({
   providers: [
@@ -26,7 +29,10 @@ import { ActivityRepository } from 'src/modules/activity/activity.repository';
     DocxService,
     PdfService,
     ActivityService,
-    ActivityRepository
+    ActivityRepository,
+    CoinService,
+    NotificationService,
+    NotificationRepository,
   ],
   exports: [GenerateTestService, GenerateTestGateway],
 })

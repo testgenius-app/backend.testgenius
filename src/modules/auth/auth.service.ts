@@ -17,6 +17,9 @@ import { UtilsService } from 'src/core/utils/utils.service';
 import { IUser } from 'src/core/types/iuser.type';
 import { User } from 'src/common/decorators/user.decorator';
 import { UserDto } from './dto/user.dto';
+import { NotificationChannel, NotificationPriority, NotificationType } from '../notification/dto/notification.create.dto';
+import { NotificationService } from '../notification/notification.service';
+import { CoinService } from '../coin/coin.service';
 
 // TODO: add logging
 @Injectable()
@@ -26,6 +29,8 @@ export class AuthService {
     private readonly authRepository: AuthRepository,
     private readonly verificationService: VerificationService,
     private readonly utilsService: UtilsService,
+    private readonly notificationService: NotificationService,
+    private readonly coinService: CoinService,
   ) {}
 
   async register(body: RegisterDto): Promise<ResultTokenDto> {
@@ -78,7 +83,12 @@ export class AuthService {
       const code = await this.verificationService.verifyVerificationCode(body);
 
       const user = await this.authRepository.createUser(code);
-
+      
+      await Promise.all([
+        this.sendNotifications(user),
+        this.coinService.updateUserCoins(user.id, 10)
+      ]);
+      
       return this.tokenService.generateTokens(user.id);
     } catch (error) {
       throw new InternalServerErrorException(error.message);
@@ -146,5 +156,23 @@ export class AuthService {
     } catch (error) {
       throw new InternalServerErrorException(error.message);
     }
+  }
+
+  private async sendNotifications(user: IUser) {
+    await this.notificationService.createNotification({
+      title: 'Hisobingiz yaratildi',
+      message: 'Hisobingiz yaratildi',
+      type: NotificationType.INFO,
+      priority: NotificationPriority.NORMAL,
+      channel: NotificationChannel.WEB,
+      userId: user.id,
+    }, 'user');
+    await this.notificationService.createNotification({
+      title: 'BONUS: Hisob yaratganingiz uchun 10 tanga berildi!',
+      message: 'Hisob yaratganingiz uchun 10 tanga berildi!',
+      type: NotificationType.SUCCESS,
+      priority: NotificationPriority.HIGH,
+      channel: NotificationChannel.WEB,
+    }, 'users');
   }
 }
