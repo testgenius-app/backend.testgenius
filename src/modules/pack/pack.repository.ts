@@ -1,8 +1,12 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreatePackDto } from './dto/create-pack.dto';
 import { UpdatePackDto } from './dto/update-pack.dto';
-import { GetPacksDto } from './dto/get-packs.dto';
 
 /**
  * Repository for handling pack database operations
@@ -13,84 +17,25 @@ export class PackRepository {
   private readonly logger = new Logger(PackRepository.name);
 
   constructor(private readonly prisma: PrismaService) {}
-
   /**
    * Get paginated packs with filtering
    * @param query - Query parameters for pagination and filtering
    * @returns Paginated packs
    */
-  async getPacks(query: GetPacksDto) {
-    const { page = 1, limit = 10, isDaily, isFree, hasDiscount, search, sortBy = 'createdAt', sortOrder = 'desc', minPrice, maxPrice } = query;
-    const skip = (page - 1) * limit;
 
-    // Build where clause
-    const where: any = {};
-
-    if (isDaily !== undefined) {
-      where.isDaily = isDaily;
+  async getPacks() {
+    const packs = await this.prisma.pack.findMany({
+      orderBy: { price: 'asc' },
+    });
+    if (packs.length > 0) {
+      return packs.map((pack) => {
+        return {
+          ...pack,
+          price: this.convertCentsToDollars(pack.price),
+        };
+      });
     }
-
-    if (isFree !== undefined) {
-      where.isFree = isFree;
-    }
-
-    if (hasDiscount !== undefined) {
-      if (hasDiscount) {
-        where.discountPerCent = { not: null, gt: 0 };
-      } else {
-        where.OR = [
-          { discountPerCent: null },
-          { discountPerCent: 0 }
-        ];
-      }
-    }
-
-    // Price filtering
-    if (minPrice !== undefined || maxPrice !== undefined) {
-      where.price = {};
-      
-      if (minPrice !== undefined) {
-        where.price.gte = minPrice;
-      }
-      
-      if (maxPrice !== undefined) {
-        where.price.lte = maxPrice;
-      }
-    }
-
-    if (search) {
-      where.name = {
-        contains: search,
-        mode: 'insensitive' as const,
-      };
-    }
-
-    // Build order by clause
-    const orderBy: any = {};
-    orderBy[sortBy] = sortOrder;
-
-    // Get packs with pagination
-    const [packs, total] = await Promise.all([
-      this.prisma.pack.findMany({
-        where,
-        orderBy,
-        skip,
-        take: limit,
-      }),
-      this.prisma.pack.count({ where }),
-    ]);
-
-    const totalPages = Math.ceil(total / limit);
-
-    return {
-      packs,
-      page,
-      limit,
-      total,
-      totalPages,
-      hasNext: page < totalPages,
-      hasPrev: page > 1,
-    };
+    return [];
   }
 
   /**
@@ -106,6 +51,8 @@ export class PackRepository {
     if (!pack) {
       throw new NotFoundException('Pack not found');
     }
+
+    pack.price = this.convertCentsToDollars(pack.price);
 
     return pack;
   }
@@ -131,7 +78,9 @@ export class PackRepository {
         },
       });
 
-      this.logger.log(`Created pack: ${pack.id} - ${pack.name} - Price: ${pack.price} cents`);
+      this.logger.log(
+        `Created pack: ${pack.id} - ${pack.name} - Price: ${pack.price} cents`,
+      );
       return pack;
     } catch (error) {
       this.logger.error(`Failed to create pack: ${error.message}`, error.stack);
@@ -158,7 +107,10 @@ export class PackRepository {
       this.logger.log(`Updated pack: ${pack.id} - ${pack.name}`);
       return pack;
     } catch (error) {
-      this.logger.error(`Failed to update pack ${id}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to update pack ${id}: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -180,7 +132,10 @@ export class PackRepository {
       this.logger.log(`Deleted pack: ${id}`);
       return { message: 'Pack deleted successfully' };
     } catch (error) {
-      this.logger.error(`Failed to delete pack ${id}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to delete pack ${id}: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -191,16 +146,18 @@ export class PackRepository {
    */
   async getPackStats() {
     try {
-      const [total, dailyPacks, freePacks, discountedPacks] = await Promise.all([
-        this.prisma.pack.count(),
-        this.prisma.pack.count({ where: { isDaily: true } }),
-        this.prisma.pack.count({ where: { isFree: true } }),
-        this.prisma.pack.count({ 
-          where: { 
-            discountPerCent: { not: null, gt: 0 } 
-          } 
-        }),
-      ]);
+      const [total, dailyPacks, freePacks, discountedPacks] = await Promise.all(
+        [
+          this.prisma.pack.count(),
+          this.prisma.pack.count({ where: { isDaily: true } }),
+          this.prisma.pack.count({ where: { isFree: true } }),
+          this.prisma.pack.count({
+            where: {
+              discountPerCent: { not: null, gt: 0 },
+            },
+          }),
+        ],
+      );
 
       return {
         total,
@@ -209,7 +166,10 @@ export class PackRepository {
         discountedPacks,
       };
     } catch (error) {
-      this.logger.error(`Failed to get pack stats: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get pack stats: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -242,8 +202,8 @@ export class PackRepository {
    */
   async getDiscountedPacks() {
     return this.prisma.pack.findMany({
-      where: { 
-        discountPerCent: { not: null, gt: 0 } 
+      where: {
+        discountPerCent: { not: null, gt: 0 },
       },
       orderBy: { discountPerCent: 'desc' },
     });
@@ -257,7 +217,7 @@ export class PackRepository {
    */
   async isPackNameExists(name: string, excludeId?: string): Promise<boolean> {
     const where: any = { name };
-    
+
     if (excludeId) {
       where.NOT = { id: excludeId };
     }
@@ -265,4 +225,29 @@ export class PackRepository {
     const count = await this.prisma.pack.count({ where });
     return count > 0;
   }
-} 
+
+  convertDollarsToCents(dollars: number): number {
+    dollars = parseFloat(dollars.toFixed(2));
+    console.log(`Converting dollars to cents: ${dollars}`);
+    if (isNaN(dollars)) {
+      throw new Error('Invalid price format');
+    }
+    if (dollars < 0) {
+      throw new Error('Price cannot be negative');
+    }
+    if (dollars > 999.99) {
+      throw new Error('Price cannot exceed $999.99');
+    }
+    return Math.round(dollars * 100);
+  }
+
+  convertCentsToDollars(cents: number): number {
+    if (isNaN(cents)) {
+      throw new Error('Invalid price format');
+    }
+    if (cents < 0) {
+      throw new Error('Price cannot be negative');
+    }
+    return parseFloat((cents / 100).toFixed(2));
+  }
+}

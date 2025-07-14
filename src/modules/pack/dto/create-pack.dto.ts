@@ -38,8 +38,6 @@ export class CreatePackDto {
   })
   @IsNumber({}, { message: 'Price must be a number' })
   @Min(0, { message: 'Price cannot be negative' })
-  @Max(999.99, { message: 'Price cannot exceed $999.99' })
-  @Transform(({ value }) => Math.round(parseFloat(value) * 100))
   price: number;
 
   @ApiProperty({

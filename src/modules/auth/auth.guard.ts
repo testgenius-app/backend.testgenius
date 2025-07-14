@@ -37,7 +37,6 @@ export class JwtAuthGuard implements CanActivate {
       req.user = iUser;
       return true;
     } catch (e) {
-      console.log('e', e);
       if (e.status && e.status === 403) {
         throw e;
       }
