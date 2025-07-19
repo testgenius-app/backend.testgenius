@@ -83,7 +83,6 @@ Return a valid JSON following this structure:
     }
   ]
 }`;
-    console.log(prompt);
     const response = await this.ai.models.generateContent({
       model: this.model,
       contents: [prompt],
@@ -208,7 +207,7 @@ Return a valid JSON following this structure:
           model: this.model,
           contents: [prompt],
         });
-        console.log(response.text);
+        (response.text);
         try {
           const jsonStr = response.text.includes('```json') 
             ? response.text.split('```json')[1].split('```')[0].trim()

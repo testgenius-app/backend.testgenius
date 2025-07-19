@@ -10,10 +10,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   // Configure raw body for Stripe webhooks
-  app.use(
-    '/v1/stripe/webhook',
-    express.raw({ type: 'application/json' })
-  );
+  app.use('/v1/stripe/webhook', express.raw({ type: 'application/json' }));
 
   // Configurating app
   app.enableCors({ origin: '*' });

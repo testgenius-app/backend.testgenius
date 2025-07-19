@@ -1,36 +1,30 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
-  Delete, 
-  Query, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
-  ValidationPipe
+  ValidationPipe,
 } from '@nestjs/common';
-import { 
-  ApiBearerAuth, 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiParam, 
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
   ApiQuery,
-  ApiBody 
+  ApiBody,
 } from '@nestjs/swagger';
 import { PackService } from './pack.service';
 import { CreatePackDto } from './dto/create-pack.dto';
 import { UpdatePackDto } from './dto/update-pack.dto';
-import { GetPacksDto } from './dto/get-packs.dto';
-import { 
-  PackResponseDto, 
-  PaginatedPacksResponseDto, 
-  PackStatsResponseDto 
-} from './dto/pack.response.dto';
-import { JwtAuthGuard } from '../auth/auth.guard';
+import { PackResponseDto, PackStatsResponseDto } from './dto/pack.response.dto';
 import { AdminGuard } from 'src/common/guards/admin.guard';
 
 /**
@@ -50,27 +44,15 @@ export class PackController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get packs',
-    description: 'Retrieve paginated packs with filtering options (public access)'
+    description:
+      'Retrieve paginated packs with filtering options (public access)',
   })
-  @ApiQuery({ name: 'page', required: false, description: 'Page number', example: 1 })
-  @ApiQuery({ name: 'limit', required: false, description: 'Items per page', example: 10 })
-  @ApiQuery({ name: 'isDaily', required: false, description: 'Filter daily packs', example: false })
-  @ApiQuery({ name: 'isFree', required: false, description: 'Filter free packs', example: false })
-  @ApiQuery({ name: 'hasDiscount', required: false, description: 'Filter discounted packs', example: false })
-  @ApiQuery({ name: 'minPrice', required: false, description: 'Minimum price in dollars', example: 1.99 })
-  @ApiQuery({ name: 'maxPrice', required: false, description: 'Maximum price in dollars', example: 10.99 })
-  @ApiQuery({ name: 'search', required: false, description: 'Search by pack name', example: 'starter' })
-  @ApiQuery({ name: 'sortBy', required: false, description: 'Sort field', enum: ['name', 'price', 'coinsCount', 'discountPerCent', 'createdAt', 'updatedAt'] })
-  @ApiQuery({ name: 'sortOrder', required: false, description: 'Sort order', enum: ['asc', 'desc'] })
   @ApiResponse({
     status: 200,
     description: 'Packs retrieved successfully',
-    type: PaginatedPacksResponseDto
   })
-  async getPacks(
-    @Query(new ValidationPipe({ transform: true })) query: GetPacksDto
-  ): Promise<PaginatedPacksResponseDto> {
-    return this.packService.getPacks(query);
+  async getPacks() {
+    return this.packService.getPacks();
   }
 
   /**
@@ -81,15 +63,18 @@ export class PackController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get pack statistics',
-    description: 'Retrieve pack statistics (Admin only)'
+    description: 'Retrieve pack statistics (Admin only)',
   })
   @ApiResponse({
     status: 200,
     description: 'Statistics retrieved successfully',
-    type: PackStatsResponseDto
+    type: PackStatsResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
   async getPackStats(): Promise<PackStatsResponseDto> {
     return this.packService.getPackStats();
   }
@@ -101,12 +86,12 @@ export class PackController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get daily packs',
-    description: 'Retrieve all daily packs (public access)'
+    description: 'Retrieve all daily packs (public access)',
   })
   @ApiResponse({
     status: 200,
     description: 'Daily packs retrieved successfully',
-    type: [PackResponseDto]
+    type: [PackResponseDto],
   })
   async getDailyPacks(): Promise<PackResponseDto[]> {
     return this.packService.getDailyPacks();
@@ -119,12 +104,12 @@ export class PackController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get free packs',
-    description: 'Retrieve all free packs (public access)'
+    description: 'Retrieve all free packs (public access)',
   })
   @ApiResponse({
     status: 200,
     description: 'Free packs retrieved successfully',
-    type: [PackResponseDto]
+    type: [PackResponseDto],
   })
   async getFreePacks(): Promise<PackResponseDto[]> {
     return this.packService.getFreePacks();
@@ -137,12 +122,12 @@ export class PackController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get discounted packs',
-    description: 'Retrieve all discounted packs (public access)'
+    description: 'Retrieve all discounted packs (public access)',
   })
   @ApiResponse({
     status: 200,
     description: 'Discounted packs retrieved successfully',
-    type: [PackResponseDto]
+    type: [PackResponseDto],
   })
   async getDiscountedPacks(): Promise<PackResponseDto[]> {
     return this.packService.getDiscountedPacks();
@@ -155,13 +140,17 @@ export class PackController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get pack by ID',
-    description: 'Retrieve a specific pack by ID (public access)'
+    description: 'Retrieve a specific pack by ID (public access)',
   })
-  @ApiParam({ name: 'id', description: 'Pack ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiParam({
+    name: 'id',
+    description: 'Pack ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
   @ApiResponse({
     status: 200,
     description: 'Pack retrieved successfully',
-    type: PackResponseDto
+    type: PackResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Pack not found' })
   async getPackById(@Param('id') id: string): Promise<PackResponseDto> {
@@ -176,23 +165,29 @@ export class PackController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create pack',
-    description: 'Create a new coin pack (Admin only)'
+    description: 'Create a new coin pack (Admin only)',
   })
   @ApiBody({
     type: CreatePackDto,
-    description: 'Pack data'
+    description: 'Pack data',
   })
   @ApiResponse({
     status: 201,
     description: 'Pack created successfully',
-    type: PackResponseDto
+    type: PackResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Bad request - Invalid data' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
-  @ApiResponse({ status: 409, description: 'Conflict - Pack name already exists' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflict - Pack name already exists',
+  })
   async createPack(
-    @Body(new ValidationPipe({ transform: true })) createPackDto: CreatePackDto
+    @Body(new ValidationPipe({ transform: true })) createPackDto: CreatePackDto,
   ): Promise<PackResponseDto> {
     return this.packService.createPack(createPackDto);
   }
@@ -205,26 +200,36 @@ export class PackController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update pack',
-    description: 'Update an existing pack (Admin only)'
+    description: 'Update an existing pack (Admin only)',
   })
-  @ApiParam({ name: 'id', description: 'Pack ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiParam({
+    name: 'id',
+    description: 'Pack ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
   @ApiBody({
     type: UpdatePackDto,
-    description: 'Update data'
+    description: 'Update data',
   })
   @ApiResponse({
     status: 200,
     description: 'Pack updated successfully',
-    type: PackResponseDto
+    type: PackResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Bad request - Invalid data' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
   @ApiResponse({ status: 404, description: 'Pack not found' })
-  @ApiResponse({ status: 409, description: 'Conflict - Pack name already exists' })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflict - Pack name already exists',
+  })
   async updatePack(
     @Param('id') id: string,
-    @Body(new ValidationPipe({ transform: true })) updatePackDto: UpdatePackDto
+    @Body(new ValidationPipe({ transform: true })) updatePackDto: UpdatePackDto,
   ): Promise<PackResponseDto> {
     return this.packService.updatePack(id, updatePackDto);
   }
@@ -237,21 +242,28 @@ export class PackController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Delete pack',
-    description: 'Delete a pack (Admin only)'
+    description: 'Delete a pack (Admin only)',
   })
-  @ApiParam({ name: 'id', description: 'Pack ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiParam({
+    name: 'id',
+    description: 'Pack ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
   @ApiResponse({
     status: 200,
     description: 'Pack deleted successfully',
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'Pack deleted successfully' }
-      }
-    }
+        message: { type: 'string', example: 'Pack deleted successfully' },
+      },
+    },
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Admin access required',
+  })
   @ApiResponse({ status: 404, description: 'Pack not found' })
   async deletePack(@Param('id') id: string) {
     return this.packService.deletePack(id);

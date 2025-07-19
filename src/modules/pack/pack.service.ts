@@ -1,9 +1,13 @@
-import { Injectable, Logger, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { PackRepository } from './pack.repository';
 import { CreatePackDto } from './dto/create-pack.dto';
 import { UpdatePackDto } from './dto/update-pack.dto';
-import { GetPacksDto } from './dto/get-packs.dto';
-import { PackResponseDto, PaginatedPacksResponseDto, PackStatsResponseDto } from './dto/pack.response.dto';
+import { PackResponseDto, PackStatsResponseDto } from './dto/pack.response.dto';
 
 /**
  * Service for handling pack business logic
@@ -20,14 +24,11 @@ export class PackService {
    * @param query - Query parameters for pagination and filtering
    * @returns Paginated packs
    */
-  async getPacks(query: GetPacksDto): Promise<PaginatedPacksResponseDto> {
+  async getPacks() {
     try {
-      this.logger.debug(`Getting packs with query: ${JSON.stringify(query)}`);
-      
-      const result = await this.packRepository.getPacks(query);
-      
-      this.logger.debug(`Found ${result.total} packs`);
-      return result as PaginatedPacksResponseDto;
+      const result = await this.packRepository.getPacks();
+
+      return result;
     } catch (error) {
       this.logger.error(`Failed to get packs: ${error.message}`, error.stack);
       throw error;
@@ -42,13 +43,16 @@ export class PackService {
   async getPackById(id: string): Promise<PackResponseDto> {
     try {
       this.logger.debug(`Getting pack by ID: ${id}`);
-      
+
       const pack = await this.packRepository.getPackById(id);
-      
+
       this.logger.debug(`Found pack: ${pack.name}`);
       return pack as PackResponseDto;
     } catch (error) {
-      this.logger.error(`Failed to get pack ${id}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get pack ${id}: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -61,9 +65,15 @@ export class PackService {
   async createPack(createPackDto: CreatePackDto): Promise<PackResponseDto> {
     try {
       this.logger.debug(`Creating pack: ${createPackDto.name}`);
-
+      const priceInCents = this.packRepository.convertDollarsToCents(
+        createPackDto.price,
+      );
+      createPackDto.price = priceInCents;
+      console.log(`Price in cents: ${createPackDto.price} came`); // Debugging line to check price
       // Validate pack name uniqueness
-      const nameExists = await this.packRepository.isPackNameExists(createPackDto.name);
+      const nameExists = await this.packRepository.isPackNameExists(
+        createPackDto.name,
+      );
       if (nameExists) {
         throw new ConflictException('Pack name already exists');
       }
@@ -72,7 +82,7 @@ export class PackService {
       this.validatePackData(createPackDto);
 
       const pack = await this.packRepository.createPack(createPackDto);
-      
+
       this.logger.log(`Created pack: ${pack.id} - ${pack.name}`);
       return pack as PackResponseDto;
     } catch (error) {
@@ -87,16 +97,24 @@ export class PackService {
    * @param updatePackDto - Update data
    * @returns Updated pack
    */
-  async updatePack(id: string, updatePackDto: UpdatePackDto): Promise<PackResponseDto> {
+  async updatePack(
+    id: string,
+    updatePackDto: UpdatePackDto,
+  ): Promise<PackResponseDto> {
     try {
-      this.logger.debug(`Updating pack ${id}: ${JSON.stringify(updatePackDto)}`);
+      this.logger.debug(
+        `Updating pack ${id}: ${JSON.stringify(updatePackDto)}`,
+      );
 
       // Check if pack exists
       await this.packRepository.getPackById(id);
 
       // Validate pack name uniqueness if name is being updated
       if (updatePackDto.name) {
-        const nameExists = await this.packRepository.isPackNameExists(updatePackDto.name, id);
+        const nameExists = await this.packRepository.isPackNameExists(
+          updatePackDto.name,
+          id,
+        );
         if (nameExists) {
           throw new ConflictException('Pack name already exists');
         }
@@ -106,11 +124,14 @@ export class PackService {
       this.validatePackData(updatePackDto);
 
       const pack = await this.packRepository.updatePack(id, updatePackDto);
-      
+
       this.logger.log(`Updated pack: ${pack.id} - ${pack.name}`);
       return pack as PackResponseDto;
     } catch (error) {
-      this.logger.error(`Failed to update pack ${id}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to update pack ${id}: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -128,11 +149,14 @@ export class PackService {
       await this.packRepository.getPackById(id);
 
       const result = await this.packRepository.deletePack(id);
-      
+
       this.logger.log(`Deleted pack: ${id}`);
       return result;
     } catch (error) {
-      this.logger.error(`Failed to delete pack ${id}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to delete pack ${id}: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -144,13 +168,16 @@ export class PackService {
   async getPackStats(): Promise<PackStatsResponseDto> {
     try {
       this.logger.debug('Getting pack statistics');
-      
+
       const stats = await this.packRepository.getPackStats();
-      
+
       this.logger.debug(`Pack stats: ${JSON.stringify(stats)}`);
       return stats;
     } catch (error) {
-      this.logger.error(`Failed to get pack stats: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get pack stats: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -162,13 +189,16 @@ export class PackService {
   async getDailyPacks(): Promise<PackResponseDto[]> {
     try {
       this.logger.debug('Getting daily packs');
-      
+
       const packs = await this.packRepository.getDailyPacks();
-      
+
       this.logger.debug(`Found ${packs.length} daily packs`);
       return packs as PackResponseDto[];
     } catch (error) {
-      this.logger.error(`Failed to get daily packs: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get daily packs: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -180,13 +210,16 @@ export class PackService {
   async getFreePacks(): Promise<PackResponseDto[]> {
     try {
       this.logger.debug('Getting free packs');
-      
+
       const packs = await this.packRepository.getFreePacks();
-      
+
       this.logger.debug(`Found ${packs.length} free packs`);
       return packs as PackResponseDto[];
     } catch (error) {
-      this.logger.error(`Failed to get free packs: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get free packs: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -198,13 +231,16 @@ export class PackService {
   async getDiscountedPacks(): Promise<PackResponseDto[]> {
     try {
       this.logger.debug('Getting discounted packs');
-      
+
       const packs = await this.packRepository.getDiscountedPacks();
-      
+
       this.logger.debug(`Found ${packs.length} discounted packs`);
       return packs as PackResponseDto[];
     } catch (error) {
-      this.logger.error(`Failed to get discounted packs: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get discounted packs: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -219,7 +255,9 @@ export class PackService {
       if (packData.price < 0) {
         throw new BadRequestException('Price cannot be negative');
       }
-      if (packData.price > 99999) { // $999.99 in cents
+      if (packData.price > 99999) {
+        console.log(packData.price); // Debugging line to check price
+        // $999.99 in cents
         throw new BadRequestException('Price cannot exceed $999.99');
       }
     }
@@ -227,7 +265,9 @@ export class PackService {
     // Validate discount percentage
     if (packData.discountPerCent !== undefined) {
       if (packData.discountPerCent < 0 || packData.discountPerCent > 100) {
-        throw new BadRequestException('Discount percentage must be between 0 and 100');
+        throw new BadRequestException(
+          'Discount percentage must be between 0 and 100',
+        );
       }
     }
 
@@ -267,19 +307,25 @@ export class PackService {
     }
 
     // Business rule: Free packs should not have discounts
-    if (packData.isFree && packData.discountPerCent && packData.discountPerCent > 0) {
-      throw new BadRequestException('Free packs cannot have discounts');
-    }
+    // if (packData.isFree && packData.discountPerCent && packData.discountPerCent > 0) {
+    //   throw new BadRequestException('Free packs cannot have discounts');
+    // }
 
     // Business rule: Daily packs should have some advantage
-    if (packData.isDaily && (!packData.discountPerCent || packData.discountPerCent === 0)) {
-      this.logger.warn('Daily pack created without discount - consider adding value');
+    if (
+      packData.isDaily &&
+      (!packData.discountPerCent || packData.discountPerCent === 0)
+    ) {
+      this.logger.warn(
+        'Daily pack created without discount - consider adding value',
+      );
     }
 
     // Business rule: Price should be reasonable for coin count
     if (packData.price !== undefined && packData.coinsCount !== undefined) {
       const pricePerCoin = packData.price / packData.coinsCount;
-      if (pricePerCoin > 100) { // More than $1 per coin
+      if (pricePerCoin > 100) {
+        // More than $1 per coin
         this.logger.warn(`High price per coin: ${pricePerCoin} cents per coin`);
       }
     }
@@ -359,7 +405,7 @@ export class PackService {
     if (!pack.discountPerCent || pack.discountPerCent === 0) {
       return pack.price;
     }
-    
+
     const discountAmount = (pack.price * pack.discountPerCent) / 100;
     return pack.price - discountAmount;
   }

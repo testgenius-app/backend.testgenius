@@ -64,7 +64,6 @@ export class VerificationService {
     }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    console.log(code);
     const token = uuid();
     const password = isRestore
       ? ''

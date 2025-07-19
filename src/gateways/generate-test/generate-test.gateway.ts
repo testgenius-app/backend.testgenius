@@ -92,7 +92,6 @@ export class GenerateTestGateway
   ) {
     try {
       const user = await this.validateUser(client);
-      console.log(data);
       // const testData = await this.generateTestService.generateTest({
       //   questions: data.questions,
       //   answers: data.answers,

@@ -264,7 +264,6 @@ export class OnlineTestGateway
       if (!this.checkRateLimit(client.id)) {
         throw new OnlineTestError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED');
       }
-      console.log(durationInMinutes);
       this.validateDuration(durationInMinutes);
       const user = await this.validateUser(client);
       if (!user) return;
